@@ -1,0 +1,37 @@
+@import "tailwindcss";
+/* THIS LINE IS CRITICAL FOR TAILWIND V4 DARK MODE */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  /* Typography */
+  --font-sans: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
+
+  /* Brand Colors - Champagne Gold (Used in Dashboard) */
+  --color-brand-50: #fdfaf2;
+  --color-brand-100: #f9edcb;
+  --color-brand-400: #f5c96a;
+  --color-brand-500: #e8b54b;
+  --color-brand-600: #b45309;
+
+  /* Base UI Colors (Dashboard) */
+  --color-surface-900: #0a0d14;
+  --color-surface-800: #12151c;
+  --color-surface-700: #181c25;
+  
+  /* Text (Dashboard) */
+  --color-text-primary: #e6e8eb;
+  --color-text-secondary: #94a3b8;
+  --color-text-muted: #566072;
+
+  /* Semantic */
+  --color-success: #10b981;
+  --color-danger: #ef4444;
+  --color-info: #38bdf8;
+}
+
+@layer base {
+  body {
+    @apply antialiased selection:bg-lime-500/30;
+  }
+}
