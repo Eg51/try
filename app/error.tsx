@@ -35,7 +35,7 @@ export default function GlobalError({
             Try Again
           </Button>
           <Button onClick={() => window.location.href = "/dashboard"} variant="secondary">
-            Go to Dashboard
+            click to return
           </Button>
         </div>
       </div>
