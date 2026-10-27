@@ -1,6 +1,5 @@
 "use client";
-
-import { useState, useEffect, useMemo, ChangeEvent } from "react";
+import { useState, useEffect, useMemo, useRef, ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { useDevModal } from "@/components/providers/DevModalProvider";
@@ -68,6 +67,7 @@ const FloatingInput = ({ id, type, value, onChange, label, icon }: FloatingInput
 
 export default function LoginPage() {
   const router = useRouter();
+   const redirectHandled = useRef(false);
   const { theme, setTheme } = useTheme();
   const { openModal } = useDevModal();
   const [mounted, setMounted] = useState(false);
@@ -134,35 +134,75 @@ export default function LoginPage() {
   };
 
   const fillDemoCredentials = () => {
-    setEmail("demo@quantix.com");
-    setPassword("demo123456");
+    setEmail("demo-user@gmail.com");
+    setPassword("#demo123456");
     setIsLogin(true);
     setTourStep(-1);
+    window.location.href = "/demo";
   };
 
-  useEffect(() => {
+  // useEffect(() => {
+  //   async function handleRedirectResult() {
+  //     try {
+  //       const result = await getRedirectResult(auth);
+  //       if (result) {
+  //         setIsLoading(true);
+  //         const token = await result.user.getIdToken();
+  //         const response = await loginWithFirebase({ token });
+  //         if ("error" in response && response.error) {
+  //           setError(response.error);
+  //           setIsLoading(false);
+  //         } else {
+  //            window.location.href = "/dashboard";
+  //           router.refresh();
+  //         }
+  //       }
+  //     } catch (err: any) {
+  //       setError("authentication failed.");
+  //       setIsLoading(false);
+  //     }
+  //   }
+  //   handleRedirectResult();
+  // }, [router]);
+    useEffect(() => {
     async function handleRedirectResult() {
+      console.log("🟢 [1. CLIENT] useEffect triggered. Checking for Google Redirect...");
+      
+      if (redirectHandled.current) return;
+      redirectHandled.current = true;
+
       try {
         const result = await getRedirectResult(auth);
+        console.log("🟢 [1. CLIENT] getRedirectResult returned:", result);
+
         if (result) {
+          console.log("🟢 [1. CLIENT] Redirect result found! Getting ID token...");
           setIsLoading(true);
           const token = await result.user.getIdToken();
+          
+          console.log("🟢 [1. CLIENT] ID Token obtained. Sending to server action...");
           const response = await loginWithFirebase({ token });
+          
+          console.log("🟢 [1. CLIENT] Server action response:", response);
+          
           if ("error" in response && response.error) {
             setError(response.error);
             setIsLoading(false);
           } else {
-            router.push("/dashboard");
-            router.refresh();
+            console.log("🟢 [1. CLIENT] Success! Forcing window redirect to /dashboard...");
+            window.location.href = "/dashboard"; 
           }
+        } else {
+          console.log("🟡 [1. CLIENT] No redirect result found (normal page load).");
         }
       } catch (err: any) {
-        setError("authentication failed.");
+        console.error("🔴 [1. CLIENT] Redirect error:", err);
+        setError(err.message || "Authentication failed.");
         setIsLoading(false);
       }
     }
     handleRedirectResult();
-  }, [router]);
+  }, []);
 
   async function handleEmailAuth(e: React.FormEvent) {
     e.preventDefault();
@@ -198,55 +238,56 @@ export default function LoginPage() {
     }
   }
 
+  // async function handleGoogleLogin() {
+  //   setIsLoading(true);
+  //   setError(null);
+  //   try {
+  //     const provider = new GoogleAuthProvider();
+      
+  //     // FIXED: Always use Redirect to avoid COOP errors
+  //     await signInWithRedirect(auth, provider);
+      
+  //   } catch (err: any) {
+  //     setError(err.message);
+  //     setIsLoading(false);
+  //   }
+  // }
   async function handleGoogleLogin() {
     setIsLoading(true);
     setError(null);
     try {
       const provider = new GoogleAuthProvider();
-      if (process.env.NODE_ENV === "development") {
-        const result = await signInWithPopup(auth, provider);
-        const token = await result.user.getIdToken();
-        const response = await loginWithFirebase({ token });
-        if ("error" in response && response.error) throw new Error(response.error);
-        router.push("/dashboard");
-        router.refresh();
+      
+      // 👇 ADDED THESE TWO LINES 👇
+      provider.addScope('email');
+      provider.addScope('profile');
+      
+      // Use Popup instead of Redirect. It bypasses the iframe cookie issue entirely.
+      const result = await signInWithPopup(auth, provider);
+      
+      // Once the popup closes successfully, grab the token immediately
+      const token = await result.user.getIdToken();
+      
+      // Send it to your server action
+      const response = await loginWithFirebase({ token });
+      
+      if ("error" in response && response.error) {
+        setError(response.error);
+        setIsLoading(false);
       } else {
-        await signInWithRedirect(auth, provider);
+        // Force a hard redirect so the proxy sees the new cookie
+        window.location.href = "/dashboard";
       }
     } catch (err: any) {
-      if (err.code === 'auth/popup-closed-by-user') setError("Login cancelled.");
-      else setError(err.message);
+      console.error("Google Login Error:", err);
+      if (err.code === 'auth/popup-closed-by-user') {
+        setError("Login cancelled.");
+      } else {
+        setError(err.message);
+      }
       setIsLoading(false);
     }
   }
-
-  // async function handleBiometricLogin() {
-  //   setIsLoading(true);
-  //   setError(null);
-  //   try {
-  //     const options = await getAuthenticationOptions();
-  //     const authResp = await startAuthentication({ optionsJSON: options as any });
-  //     const verification = await verifyAuthentication(authResp);
-  //     if (verification.success && verification.customToken) {
-  //       const userCredential = await signInWithCustomToken(auth, verification.customToken);
-  //       const idToken = await userCredential.getIdToken();
-  //       const finalRes = await loginWithFirebase({ token: idToken });
-  //       if ("error" in finalRes && finalRes.error) {
-  //         setError(finalRes.error);
-  //         setIsLoading(false);
-  //       } else {
-  //         router.push("/dashboard");
-  //         router.refresh();
-  //       }
-  //     } else {
-  //       setError("Biometric authentication failed.");
-  //       setIsLoading(false);
-  //     }
-  //   } catch (err: any) {
-  //     setError(err.message || "Biometric login failed.");
-  //     setIsLoading(false);
-  //   }
-  // }
   async function handleBiometricLogin() {
     setIsLoading(true);
     setError(null);
@@ -284,7 +325,6 @@ export default function LoginPage() {
       setIsLoading(false);
     }
   }
-
 
   const getTooltipStyle = () => {
     if (!tourElementRect) return {};
@@ -465,7 +505,7 @@ export default function LoginPage() {
 
               <div className="flex flex-col gap-2 mt-6">
                 <Button id="tour-submit-btn" type="submit" disabled={isLoading} className="cursor-pointer w-full h-12 bg-lime-600 hover:bg-lime-700 text-white font-bold text-base rounded-xl shadow-lg shadow-lime-600/20 transition-all">{isLoading ? "Processing..." : isLogin ? "Log In" : "Sign Up"}</Button>
-                <Button id="tour-demo-btn" type="button" onClick={fillDemoCredentials} variant="ghost" className="w-full h-10 text-lime-700 dark:text-lime-400  font-semibold hover:bg-lime-100 dark:hover:bg-[#121A14] rounded-xl transition-all flex items-center justify-center gap-2"><PlayCircle size={18} /> Try Demo Account</Button>
+                <Button id="tour-demo-btn" type="button" onClick={fillDemoCredentials} variant="ghost" className="w-full h-10 text-lime-700 dark:text-lime-400  font-semibold hover:bg-lime-100 dark:hover:bg-[#121A14] rounded-xl transition-all flex cursor-pointer items-center justify-center gap-2"><PlayCircle size={18} /> Try a Demo Account</Button>
               </div>
             </motion.form>
           </AnimatePresence>
@@ -483,6 +523,7 @@ export default function LoginPage() {
           </Button>
           <Button id="tour-passkey-btn" type="button" onClick={handleBiometricLogin} disabled={isLoading} variant="secondary" className="cursor-pointer border-lime-500/30 dark:border-lime-500/20 bg-[#f4fbf5]/50 dark:bg-[#050806] hover:bg-white dark:hover:bg-[#121A14] text-lime-950 dark:text-white font-semibold rounded-xl h-11 shadow-sm"><Fingerprint size={18} className="mr-2" /> Passkey</Button>
         </div>
+        
       </motion.div>
     </div>
   );

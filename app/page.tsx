@@ -259,7 +259,9 @@ export default function LandingPage() {
           <GlobalStatsSection />
           <FeatureGrid />
         </main>
-
+<button onClick={() => { throw new Error("Testing the error boundary!") }}>
+  Break the app
+</button>
         <FooterSection />
       </div>
     </LazyMotion>

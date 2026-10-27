@@ -2,11 +2,11 @@
 import { getServerSession } from "@/lib/session";
 import { Button } from "@/components/ui/Button";
 import { ArrowUpRight, TrendingUp, ShieldCheck } from "lucide-react";
-
-// FIX: Tell Next.js 16 not to statically prerender this page
-export const instant = false;
+import { connection } from 'next/server';
 
 export default async function DashboardPage() {
+  await connection(); // <--- ADD THIS EXACT LINE HERE
+  
   const session = await getServerSession();
   if (!session) return null;
 
