@@ -37,19 +37,6 @@ export default function TradingSidePanel({
   positions?: Position[];
   onPlaceOrder: (side: "buy" | "sell", lots: number, entry: number, sl?: number, tp?: number) => void;
 }) {
-// export default function TradingSidePanel({ 
-//   isOpen, 
-//   onClose, 
-//   coin, 
-//   quoteCurrency,
-//   onPlaceOrder
-// }: { 
-//   isOpen: boolean, 
-//   onClose: () => void, 
-//   coin: any, 
-//   quoteCurrency: Quote,
-//   onPlaceOrder: (side: "buy" | "sell", lots: number, entry: number, sl?: number, tp?: number) => void
-// }) {
   const [side, setSide] = useState<"buy" | "sell">("buy");
   
   // SAFE FALLBACK: Prevent crashes if coin data is missing

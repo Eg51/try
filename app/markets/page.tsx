@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import MarketTable, { MarketCoin } from "./MarketTable";
+import { ChevronDown, TrendingUp, Flame } from "lucide-react";
 export const instant = false;
 
 const WATERMARK_SYMBOLS = [
@@ -57,6 +58,11 @@ export default async function MarketsPage() {
   return (
     <div className="relative min-h-screen bg-[#f0fdf4] dark:bg-[#050806] overflow-hidden font-sans pb-12 transition-colors duration-300">
       
+      {/* ADD THIS BANNER HERE */}
+      <div className="relative z-50 bg-lime-600 text-white text-center py-2 text-sm font-bold tracking-wide flex items-center justify-center gap-2 shadow-md">
+        <Flame className="text-amber-500" size={16} /> DEMO MODE - No real funds are at risk
+      </div>
+      
       {/* BACKGROUND WATERMARKS (CSS Grid - No Overlap) */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden select-none z-0 grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-8 p-4 place-items-center opacity-10 dark:opacity-5">
         {Array.from({ length: 48 }).map((_, i) => {
@@ -69,7 +75,6 @@ export default async function MarketsPage() {
           );
         })}
       </div>
-
       <div className="absolute top-[-10%] left-[-10%] w-[60%] md:w-[40%] h-[40%] bg-lime-300/40 dark:bg-lime-900/10 blur-[120px] rounded-full pointer-events-none z-0"></div>
       <div className="absolute bottom-[-10%] right-[-10%] w-[60%] md:w-[40%] h-[40%] bg-green-300/30 dark:bg-green-900/10 blur-[120px] rounded-full pointer-events-none z-0"></div>
 

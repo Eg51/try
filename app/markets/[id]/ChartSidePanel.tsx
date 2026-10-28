@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence, Variants } from "framer-motion";
-import { X, Star, LineChart, ChevronDown, MoreHorizontal, Search, LogIn, UserPlus, Activity, TrendingUp } from "lucide-react";
+import { X, Star, LineChart, ChevronDown, MoreHorizontal, Search, LogIn, UserPlus, Activity, TrendingUp, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { toggleFavorite } from "@/app/actions/markets";
 
@@ -15,7 +15,6 @@ export type Quote = {
   category: "fiat" | "crypto" | "memes";
 };
 
-// --- ANIMATION VARIANTS ---
 const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.1, delayChildren: 0.1 } },
@@ -31,7 +30,7 @@ const statCardVariants: Variants = {
   visible: { opacity: 1, scale: 1, transition: { type: "spring", stiffness: 300, damping: 25 } },
 };
 
-const WATCHLIST = [
+const DEFAULT_WATCHLIST = [
   { id: "bitcoin", symbol: "BTCUSD", name: "Bitcoin", price: 64230.50, change: 2.4 },
   { id: "ethereum", symbol: "ETHUSD", name: "Ethereum", price: 3450.20, change: -1.2 },
   { id: "euro", symbol: "EURUSD", name: "Euro / Dollar", price: 1.0842, change: 0.15 },
@@ -60,18 +59,17 @@ export default function ChartSidePanel({
 }) {
   const router = useRouter();
   
-  // Dropdown & Modal State
-  const [showPairDropdown, setShowPairDropdown] = useState(false);
+  // States
+  const [showPairDropdown, setShowPairDropdown] = useState<string | false>(false); 
   const [showMoreModal, setShowMoreModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [modalTab, setModalTab] = useState<"all" | "crypto" | "fiat" | "memes">("all");
   
-  // Favorites State (The logic you thought I deleted)
   const [isFavorited, setIsFavorited] = useState(initialIsFavorited);
   const [isSaving, setIsSaving] = useState(false);
-  const [showAuthModal, setShowAuthModal] = useState(false); // <-- THE MODAL STATE
-  
-  // Local favorites for the watchlist (Mocked)
+  const [showAuthModal, setShowAuthModal] = useState(false); 
+
+  // Dynamic Watchlist State
+  const [watchlist, setWatchlist] = useState(DEFAULT_WATCHLIST);
   const [localFavorites, setLocalFavorites] = useState<string[]>(["bitcoin"]);
 
   // Adaptive recent quotes state
@@ -84,9 +82,32 @@ export default function ChartSidePanel({
     }
   }, []);
 
+  // Add to Watchlist
+  const addToWatchlist = async (newAsset: any) => {
+    if (watchlist.find(w => w.id === newAsset.id)) return;
+    
+    setWatchlist(prev => [...prev, newAsset]);
+    
+    if (isLoggedIn) {
+      const res = await toggleFavorite(newAsset.id);
+      if (!res.success) {
+        setWatchlist(prev => prev.filter(w => w.id !== newAsset.id)); // Revert
+        alert(res.error);
+      }
+    }
+  };
+
+  // Remove from Watchlist
+  const removeFromWatchlist = async (id: string) => {
+    setWatchlist(prev => prev.filter(w => w.id !== id));
+    if (isLoggedIn) {
+      await toggleFavorite(id);
+    }
+  };
+
   const handleQuoteSelect = (quote: Quote) => {
     setQuoteCurrency(quote);
-    setShowPairDropdown(false);
+    setShowPairDropdown(false); 
     setShowMoreModal(false);
     
     const newRecent = [quote.id, ...recentQuoteIds.filter(id => id !== quote.id)].slice(0, 5);
@@ -95,23 +116,14 @@ export default function ChartSidePanel({
   };
 
   const displayedQuotes = recentQuoteIds.map(id => (availableQuotes || []).find(q => q.id === id)).filter(Boolean) as Quote[];
-  
-  const filteredAllQuotes = (availableQuotes || []).filter(q => {
-    const matchesSearch = q.name.toLowerCase().includes(searchQuery.toLowerCase()) || q.symbol.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesTab = modalTab === "all" || q.category === modalTab;
-    return matchesSearch && matchesTab;
-  });
 
-  // --- RESTORED: THE MAIN FAVORITE LOGIC ---
   const handleMainFavorite = async () => {
     if (!isLoggedIn) {
-      setShowAuthModal(true); // <-- PROMPTS THE MODAL
+      setShowAuthModal(true); 
       return;
     }
     setIsSaving(true);
     setIsFavorited(!isFavorited);
-    
-    // The actual DB call
     const res = await toggleFavorite(coin.id);
     if (!res.success) {
       setIsFavorited(isFavorited); 
@@ -127,14 +139,11 @@ export default function ChartSidePanel({
   };
 
   const handleAssetClick = (id: string) => {
-    onClose(); // Close panel
-    router.push(`/markets/${id}`); // Navigate to asset
+    onClose(); 
+    router.push(`/markets/${id}`); 
   };
 
-  // Dynamic Data calculations
-  const currentPrice = (coin.current_price * quoteCurrency.rate).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 });
-  const isPositive = coin.price_change_percentage_24h >= 0;
-  
+  // Data calculations
   const high24h = ((coin.high_24h || 0) * quoteCurrency.rate).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 });
   const low24h = ((coin.low_24h || 0) * quoteCurrency.rate).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 });
   const volume = ((coin.total_volume || 0) * quoteCurrency.rate).toLocaleString(undefined, { maximumFractionDigits: 0 });
@@ -156,7 +165,7 @@ export default function ChartSidePanel({
             transition={{ type: "spring", damping: 25, stiffness: 200 }}
             className="fixed top-0 right-0 bottom-0 z-[110] w-full sm:w-[500px] bg-[#f0fdf4] dark:bg-[#050806] border-l border-lime-500/20 dark:border-lime-500/10 shadow-2xl flex flex-col transition-colors duration-300"
           >
-            {/* Header with Favorite Button */}
+            {/* Header */}
             <div className="flex items-center justify-between px-4 py-4 border-b border-lime-500/10 bg-white/40 dark:bg-[#121A14]/60 backdrop-blur-md shrink-0">
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-2">
@@ -186,7 +195,7 @@ export default function ChartSidePanel({
               animate="visible"
               className="flex-1 p-6 flex flex-col space-y-6 overflow-y-auto custom-scrollbar pb-10"
             >
-              {/* MARKET STATISTICS PANEL */}
+              {/* STATS PANEL */}
               <motion.div 
                 variants={itemVariants}
                 className="rounded-3xl border border-lime-500/20 dark:border-lime-500/10 bg-white/60 dark:bg-[#0a0f0b]/80 backdrop-blur-xl p-6 flex flex-col shadow-sm"
@@ -197,27 +206,27 @@ export default function ChartSidePanel({
                 </div>
 
                 <motion.div variants={containerVariants} className="grid grid-cols-2 gap-4">
-                  <motion.div variants={statCardVariants} whileHover={{ scale: 1.03, y: -2 }} className="bg-lime-50/50 dark:bg-black/30 p-4 rounded-2xl border border-lime-500/10 cursor-default transition-shadow hover:shadow-md">
+                  <motion.div variants={statCardVariants} className="bg-lime-50/50 dark:bg-black/30 p-4 rounded-2xl border border-lime-500/10">
                     <p className="text-[10px] font-bold text-lime-800/60 dark:text-lime-200/50 uppercase tracking-wider mb-1">24h High</p>
                     <p className="text-sm font-mono font-bold text-lime-950 dark:text-white">{quoteCurrency.symbol}{high24h}</p>
                   </motion.div>
 
-                  <motion.div variants={statCardVariants} whileHover={{ scale: 1.03, y: -2 }} className="bg-lime-50/50 dark:bg-black/30 p-4 rounded-2xl border border-lime-500/10 cursor-default transition-shadow hover:shadow-md">
+                  <motion.div variants={statCardVariants} className="bg-lime-50/50 dark:bg-black/30 p-4 rounded-2xl border border-lime-500/10">
                     <p className="text-[10px] font-bold text-lime-800/60 dark:text-lime-200/50 uppercase tracking-wider mb-1">24h Low</p>
                     <p className="text-sm font-mono font-bold text-lime-950 dark:text-white">{quoteCurrency.symbol}{low24h}</p>
                   </motion.div>
 
-                  <motion.div variants={statCardVariants} whileHover={{ scale: 1.03, y: -2 }} className="bg-lime-50/50 dark:bg-black/30 p-4 rounded-2xl border border-lime-500/10 cursor-default transition-shadow hover:shadow-md">
+                  <motion.div variants={statCardVariants} className="bg-lime-50/50 dark:bg-black/30 p-4 rounded-2xl border border-lime-500/10">
                     <p className="text-[10px] font-bold text-lime-800/60 dark:text-lime-200/50 uppercase tracking-wider mb-1">24h Volume</p>
                     <p className="text-sm font-mono font-bold text-lime-950 dark:text-white">{quoteCurrency.symbol}{volume}</p>
                   </motion.div>
 
-                  <motion.div variants={statCardVariants} whileHover={{ scale: 1.03, y: -2 }} className="bg-lime-50/50 dark:bg-black/30 p-4 rounded-2xl border border-lime-500/10 cursor-default transition-shadow hover:shadow-md">
+                  <motion.div variants={statCardVariants} className="bg-lime-50/50 dark:bg-black/30 p-4 rounded-2xl border border-lime-500/10">
                     <p className="text-[10px] font-bold text-lime-800/60 dark:text-lime-200/50 uppercase tracking-wider mb-1">Market Cap</p>
                     <p className="text-sm font-mono font-bold text-lime-950 dark:text-white">{quoteCurrency.symbol}{marketCap}</p>
                   </motion.div>
 
-                  <motion.div variants={statCardVariants} whileHover={{ scale: 1.02, y: -2 }} className="col-span-2 bg-lime-50/50 dark:bg-black/30 p-4 rounded-2xl border border-lime-500/10 cursor-default transition-shadow hover:shadow-md">
+                  <motion.div variants={statCardVariants} className="col-span-2 bg-lime-50/50 dark:bg-black/30 p-4 rounded-2xl border border-lime-500/10">
                     <p className="text-[10px] font-bold text-lime-800/60 dark:text-lime-200/50 uppercase tracking-wider mb-1">Circulating Supply</p>
                     <p className="text-sm font-mono font-bold text-lime-950 dark:text-white flex items-baseline gap-2">
                       {circSupply} <span className="text-[10px] text-lime-600 dark:text-lime-400">{coin.symbol.toUpperCase()}</span>
@@ -226,7 +235,7 @@ export default function ChartSidePanel({
                 </motion.div>
               </motion.div>
 
-              {/* MARKET WATCH LIST */}
+              {/* WATCHLIST */}
               <motion.div variants={itemVariants} className="rounded-3xl border border-lime-500/20 dark:border-lime-500/10 bg-white/60 dark:bg-[#0a0f0b]/80 backdrop-blur-xl p-6 flex flex-col shadow-sm">
                 <div className="flex items-center gap-2 mb-4 text-lime-950 dark:text-white">
                   <TrendingUp size={18} className="text-lime-500" />
@@ -234,12 +243,12 @@ export default function ChartSidePanel({
                 </div>
                 
                 <div className="space-y-1 relative">
-                  {WATCHLIST.map(asset => {
+                  {watchlist.map(asset => {
                     const isActive = coin.id === asset.id;
                     return (
                       <div 
                         key={asset.id}
-                        className={`w-full flex items-center justify-between p-3 rounded-xl transition-colors ${isActive ? 'bg-lime-500/10 border border-lime-500/20' : 'hover:bg-lime-500/5 border border-transparent'}`}
+                        className={`w-full flex items-center justify-between p-3 rounded-xl transition-colors group ${isActive ? 'bg-lime-500/10 border border-lime-500/20' : 'hover:bg-lime-500/5 border border-transparent'}`}
                       >
                         <div className="flex items-center gap-3">
                           <button onClick={(e) => { e.stopPropagation(); toggleLocalFavorite(asset.id); }} className="text-lime-600 dark:text-lime-400 hover:scale-110 transition-transform">
@@ -254,41 +263,48 @@ export default function ChartSidePanel({
                           </div>
                         </div>
 
-                        <div className="text-right flex items-center gap-4">
+                        <div className="text-right flex items-center gap-2">
                           <div className="cursor-pointer" onClick={() => handleAssetClick(asset.id)}>
                             <div className="text-xs font-mono text-lime-950 dark:text-white">{asset.price.toFixed(2)}</div>
                             <div className={`text-[10px] font-mono font-bold ${asset.change >= 0 ? 'text-green-500' : 'text-red-500'}`}>{asset.change >= 0 ? '+' : ''}{asset.change}%</div>
                           </div>
 
-                          {/* Active Asset Dropdown */}
-                          {isActive && (
-                            <div className="relative">
-                              <button 
-                                onClick={() => setShowPairDropdown(!showPairDropdown)}
-                                className="flex items-center gap-1 text-[10px] font-bold text-lime-600 dark:text-lime-400 hover:text-lime-700 transition-colors cursor-pointer bg-lime-50 dark:bg-black/40 px-2 py-1 rounded-md border border-lime-500/20"
-                              >
-                                / {quoteCurrency.name} <ChevronDown size={12} />
-                              </button>
+                          {/* DELETE BUTTON */}
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); removeFromWatchlist(asset.id); }}
+                            className="opacity-0 group-hover:opacity-100 p-1.5 text-red-400 hover:text-red-600 transition-all"
+                            title="Remove from watchlist"
+                          >
+                            <Trash2 size={14} />
+                          </button>
 
-                              <AnimatePresence>
-                                {showPairDropdown && (
-                                  <motion.div 
-                                    initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
-                                    className="absolute top-full mt-2 right-0 w-48 bg-white/95 dark:bg-[#121A14]/95 backdrop-blur-xl border border-lime-500/20 rounded-xl shadow-xl overflow-hidden z-50"
-                                  >
-                                    {displayedQuotes.map((curr) => (
-                                      <button key={curr.id} onClick={() => handleQuoteSelect(curr)} className={`w-full text-left px-4 py-2 hover:bg-lime-50 dark:hover:bg-black/40 font-bold text-sm transition-colors flex items-center justify-between ${quoteCurrency.id === curr.id ? 'text-lime-600 dark:text-lime-400' : 'text-lime-950 dark:text-white'}`}>
-                                        <span>{curr.symbol} {curr.name}</span>
-                                      </button>
-                                    ))}
-                                    <button onClick={() => { setShowPairDropdown(false); setShowMoreModal(true); }} className="w-full text-left px-4 py-3 hover:bg-lime-50 dark:hover:bg-black/40 font-bold text-sm transition-colors flex items-center gap-2 text-lime-600 dark:text-lime-400 border-t border-lime-500/10">
-                                      <MoreHorizontal size={16} /> More...
+                          {/* DROPDOWN FOR EVERY ROW */}
+                          <div className="relative">
+                            <button 
+                              onClick={() => setShowPairDropdown(showPairDropdown === asset.id ? false : asset.id)}
+                              className="flex items-center gap-1 text-[10px] font-bold text-lime-600 dark:text-lime-400 hover:text-lime-700 transition-colors cursor-pointer bg-lime-50 dark:bg-black/40 px-2 py-1 rounded-md border border-lime-500/20"
+                            >
+                              / {quoteCurrency.name} <ChevronDown size={12} />
+                            </button>
+
+                            <AnimatePresence>
+                              {showPairDropdown === asset.id && (
+                                <motion.div 
+                                  initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
+                                  className="absolute top-full mt-2 right-0 w-48 bg-white/95 dark:bg-[#121A14]/95 backdrop-blur-xl border border-lime-500/20 rounded-xl shadow-xl overflow-hidden z-50"
+                                >
+                                  {displayedQuotes.map((curr) => (
+                                    <button key={curr.id} onClick={() => handleQuoteSelect(curr)} className={`w-full text-left px-4 py-2 hover:bg-lime-50 dark:hover:bg-black/40 font-bold text-sm transition-colors flex items-center justify-between ${quoteCurrency.id === curr.id ? 'text-lime-600 dark:text-lime-400' : 'text-lime-950 dark:text-white'}`}>
+                                      <span>{curr.symbol} {curr.name}</span>
                                     </button>
-                                  </motion.div>
-                                )}
-                              </AnimatePresence>
-                            </div>
-                          )}
+                                  ))}
+                                  <button onClick={() => { setShowPairDropdown(false); setShowMoreModal(true); }} className="w-full text-left px-4 py-3 hover:bg-lime-50 dark:hover:bg-black/40 font-bold text-sm transition-colors flex items-center gap-2 text-lime-600 dark:text-lime-400 border-t border-lime-500/10">
+                                    <MoreHorizontal size={16} /> Add Asset...
+                                  </button>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                          </div>
                         </div>
                       </div>
                     );
@@ -299,7 +315,69 @@ export default function ChartSidePanel({
             </motion.div>
           </motion.div>
 
-          {/* THE AUTH MODAL (RESTORED) */}
+          {/* ADD ASSET MODAL */}
+          <AnimatePresence>
+            {showMoreModal && (
+              <motion.div 
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+              >
+                <motion.div 
+                  initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
+                  className="relative w-full max-w-md bg-[#f4fbf5] dark:bg-[#121A14] rounded-3xl p-6 shadow-2xl border border-lime-500/20"
+                >
+                  <button onClick={() => setShowMoreModal(false)} className="absolute top-4 right-4 text-lime-600 hover:text-lime-800 transition-colors">
+                    <X size={20} />
+                  </button>
+                  
+                  <h2 className="text-xl font-bold text-lime-950 dark:text-white mb-4">Add to Watchlist</h2>
+                  
+                  <input 
+                    type="text"
+                    placeholder="Search assets..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full bg-white/50 dark:bg-black/30 border border-lime-500/20 rounded-xl px-4 py-2 text-sm text-lime-950 dark:text-white focus:outline-none focus:border-lime-500 mb-4"
+                  />
+
+                  <div className="max-h-[300px] overflow-y-auto custom-scrollbar space-y-2">
+                    {availableQuotes
+                      .filter((q: any) => q.name.toLowerCase().includes(searchQuery.toLowerCase()))
+                      .map((quote: any) => {
+                        const isAlreadyAdded = watchlist.some(w => w.id === quote.id);
+                        return (
+                          <div key={quote.id} className="flex items-center justify-between p-3 rounded-xl bg-white/50 dark:bg-black/20 border border-lime-500/10">
+                            <div>
+                              <div className="text-sm font-bold text-lime-950 dark:text-white">{quote.symbol}</div>
+                              <div className="text-xs text-lime-800/60 dark:text-lime-200/50">{quote.name}</div>
+                            </div>
+                            <button 
+                              onClick={() => addToWatchlist({
+                                id: quote.id,
+                                symbol: quote.symbol + "USD",
+                                name: quote.name,
+                                price: quote.rate ? (1 / quote.rate) : 0,
+                                change: 0
+                              })}
+                              disabled={isAlreadyAdded}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                                isAlreadyAdded 
+                                  ? 'bg-gray-200 dark:bg-gray-700 text-gray-400 cursor-not-allowed' 
+                                  : 'bg-lime-600 hover:bg-lime-700 text-white'
+                              }`}
+                            >
+                              {isAlreadyAdded ? "Added" : "Add"}
+                            </button>
+                          </div>
+                        );
+                      })}
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* AUTH MODAL */}
           <AnimatePresence>
             {showAuthModal && (
               <motion.div 

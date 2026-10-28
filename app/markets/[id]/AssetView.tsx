@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Menu, Hexagon } from "lucide-react";
 import TradingSidePanel from "./TradingSidePanel";
 import ChartSidePanel from "./ChartSidePanel";
+import { Flame } from "lucide-react";
 import TradingTerminal from "@/components/features/TradingTerminal"; 
 
 export type Quote = {
@@ -103,11 +104,15 @@ export default function AssetView({
         })}
       </div>
 
-      {/* FULL SCREEN TERMINAL WITH WATERMARK BACKGROUND */}
-      {/* ADDED flex-col so the top bar and terminal stack properly */}
+          {/* FULL SCREEN TERMINAL WITH WATERMARK BACKGROUND */}
       <div className="relative z-10 w-full max-w-[1600px] h-[95vh] rounded-3xl border border-lime-500/20 dark:border-lime-500/10 shadow-[0_8px_32px_0_rgba(132,204,22,0.15)] dark:shadow-[0_8px_32px_0_rgba(0,0,0,0.5)] overflow-hidden bg-[#f4fbf5]/80 dark:bg-[#050806]/80 backdrop-blur-md flex flex-col">
         
-        {/* NEW: THE UNIFIED TOP ACTION BAR */}
+        {/* DEMO MODE BANNER */}
+        <div className="h-8 shrink-0 bg-lime-600 text-white text-[10px] sm:text-xs font-bold tracking-wide flex items-center justify-center gap-2 shadow-md z-50">
+          <Flame className="text-amber-500" size={14} /> DEMO MODE - No real funds are at risk
+        </div>
+
+        {/* THE UNIFIED TOP ACTION BAR */}
         <div className="h-12 shrink-0 flex items-center justify-between px-4 border-b border-lime-500/10 bg-white/50 dark:bg-[#121A14]/60 backdrop-blur-md z-50">
           <button 
             onClick={() => setIsLeftPanelOpen(true)}
