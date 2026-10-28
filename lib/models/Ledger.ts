@@ -27,11 +27,12 @@ const LedgerAccountSchema = new Schema<ILedgerAccount>(
   { timestamps: true }
 );
 
-LedgerAccountSchema.index({ userId: 1, assetId: 1, type: 1 }, { unique: true });
+// Notice the index is changed. It now accounts for null userIds for system accounts.
+LedgerAccountSchema.index({ userId: 1, assetId: 1, type: 1 }, { unique: true, partialFilterExpression: { userId: { $type: "objectId" } } });
+LedgerAccountSchema.index({ assetId: 1, type: 1 }, { unique: true, partialFilterExpression: { userId: null } });
 
 export const LedgerAccount: Model<ILedgerAccount> = 
   mongoose.models.LedgerAccount || mongoose.model<ILedgerAccount>('LedgerAccount', LedgerAccountSchema);
-
 
 // ==========================================
 // 2. LEDGER TRANSACTION (Double-Entry)
@@ -78,12 +79,22 @@ const LedgerTransactionSchema = new Schema<ILedgerTransaction>(
 
 // FIX: Use async function and throw, rather than next() callbacks
 LedgerTransactionSchema.pre('save', async function (this: ILedgerTransaction) {
-  const balanceCheck = this.entries.reduce((acc, entry) => {
-    return acc + (entry.direction === 'credit' ? entry.amount : -entry.amount);
-  }, 0);
+  const assetBalances: Record<string, number> = {};
 
-  if (balanceCheck !== 0) {
-    throw new Error(`Ledger imbalance: Transaction must sum to zero, but got ${balanceCheck}`);
+  // 1. Calculate the total credits and debits for EACH asset
+  for (const entry of this.entries) {
+    if (!assetBalances[entry.assetId]) {
+      assetBalances[entry.assetId] = 0;
+    }
+    const amount = entry.direction === 'credit' ? entry.amount : -entry.amount;
+    assetBalances[entry.assetId] += amount;
+  }
+
+  // 2. Verify that every single asset sums exactly to zero
+  for (const [assetId, balance] of Object.entries(assetBalances)) {
+    if (balance !== 0) {
+      throw new Error(`Ledger imbalance for ${assetId}: Must sum to zero, but got ${balance}`);
+    }
   }
 });
 

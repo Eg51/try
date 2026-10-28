@@ -11,6 +11,7 @@
   "dependencies": {
     "@simplewebauthn/browser": "^14.0.0",
     "@simplewebauthn/server": "^14.0.3",
+    "@types/three": "^0.186.0",
     "@upstash/redis": "^1.39.0",
     "bcryptjs": "^3.0.3",
     "clsx": "^2.1.1",

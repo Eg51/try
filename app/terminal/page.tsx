@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import dynamic from "next/dynamic";
 import { motion, AnimatePresence } from "framer-motion";
 import { Settings, Menu, TrendingUp, Shield, Zap, Hexagon } from "lucide-react";
-import TradingSidePanel from "@/app/markets/TradingSidePanel";
+import TradingSidePanel from "@/app/markets/[id]/TradingSidePanel";
 
 // Dynamically import the 3D chart to prevent SSR hydration errors
 const Three3DChart = dynamic(() => import("@/app/Three3DChart"), { 
@@ -126,14 +126,16 @@ export default function Dashboard() {
 
         {/* 3D TERMINAL */}
         <section className="relative h-[600px] rounded-xl border border-white/10 bg-[#0e1116] overflow-hidden">
-          <Three3DChart />
+          {/* WRAPPING IN SUSPENSE FIXES THE PRERENDER ERROR */}
+          <Suspense fallback={<div className="w-full h-full flex items-center justify-center text-gray-500 font-mono text-sm">Loading 3D...</div>}>
+            <Three3DChart />
+          </Suspense>
         </section>
 
       </main>
 
       {/* THE TRADING SIDE PANEL COMPONENT */}
-      {/* Default fallback data for the terminal on the main dashboard */}
-        <TradingSidePanel 
+      <TradingSidePanel 
         isOpen={isPanelOpen} 
         onClose={() => setIsPanelOpen(false)} 
         coin={{
@@ -150,7 +152,9 @@ export default function Dashboard() {
             rate: 1,
             category: "fiat"
         }}
-        />
+        positions={[]}
+        onPlaceOrder={() => {}}
+      />
     </div>
   );
 }

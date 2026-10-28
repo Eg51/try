@@ -35,3 +35,21 @@
     @apply antialiased selection:bg-lime-500/30;
   }
 }
+/* Add this to the bottom of globals.css */
+@keyframes marquee-scroll-left {
+  0% { transform: translateX(0%); }
+  100% { transform: translateX(-50%); }
+}
+
+@keyframes marquee-scroll-right {
+  0% { transform: translateX(-50%); }
+  100% { transform: translateX(0%); }
+}
+
+.animate-marquee-left {
+  animation: marquee-scroll-left linear infinite;
+}
+
+.animate-marquee-right {
+  animation: marquee-scroll-right linear infinite;
+}

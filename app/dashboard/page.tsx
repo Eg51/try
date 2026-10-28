@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/Button";
 import { ArrowUpRight, TrendingUp, ShieldCheck } from "lucide-react";
 import { connection } from 'next/server';
 
+export const instant = false;
 export default async function DashboardPage() {
   await connection(); // <--- ADD THIS EXACT LINE HERE
   

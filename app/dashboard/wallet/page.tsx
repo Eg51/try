@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/Button";
 import { ArrowDownLeft, ArrowUpRight, Wallet as WalletIcon } from "lucide-react";
 import { getServerSession } from "@/lib/session";
 import { redirect } from "next/navigation";
+
 export const instant = false;
 export default async function WalletPage() {
   const session = await getServerSession();

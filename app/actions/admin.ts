@@ -31,7 +31,7 @@ export async function getAdminDashboardStats() {
     const trades = await LedgerTransaction.find({ kind: 'trade' }).lean();
     const totalVolumeCents = trades.reduce((acc, txn) => {
       // Find the USD entry in the transaction to sum up
-      const usdEntry = txn.entries.find(e => e.assetId === 'USD');
+      const usdEntry = txn.entries.find((e: any) => e.assetId === 'USD');
       return acc + (usdEntry ? usdEntry.amount : 0);
     }, 0);
 

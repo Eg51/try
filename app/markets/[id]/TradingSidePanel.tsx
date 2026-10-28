@@ -66,11 +66,17 @@ export default function TradingSidePanel({
     onClose();
   };
 
-  // Generate a mini chart for the side panel
+  // Generate a mini chart for the side panel (Deterministic, no random)
   const candles = Array.from({ length: 30 }).map((_, i) => {
     const open = currentPrice * (0.95 + i * 0.002);
-    const close = open + (Math.random() - 0.45) * (currentPrice * 0.02);
-    return { open, close, high: Math.max(open, close), low: Math.min(open, close), up: close >= open };
+    const close = open + (Math.sin(i * 0.5) * 0.01) * currentPrice;
+    return { 
+      open, 
+      close, 
+      high: Math.max(open, close) + (currentPrice * 0.001), 
+      low: Math.min(open, close) - (currentPrice * 0.001), 
+      up: close >= open 
+    };
   });
 
   return (

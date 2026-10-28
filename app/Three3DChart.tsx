@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 
-// --- DATA ---
+// --- DATA (Keep your exact data) ---
 const histData = [
   { id: 'h1', range: '0–15ms', label: 'Ultra-low sub-network', freq: '1,420', pct: 6.4, z: -2.4, h: 3.2, color: 0x60a5fa, sub: 'London LD4 fastpath' },
   { id: 'h2', range: '15–30ms', label: 'Core consensus fastpath', freq: '2,890', pct: 13.1, z: -1.8, h: 6.5, color: 0x22d3ee, sub: 'Equinix NY4' },
@@ -71,21 +71,21 @@ export default function Three3DChart() {
   const [mode, setMode] = useState<'histogram' | 'bar' | 'donut' | 'graph'>('histogram');
   const [inspector, setInspector] = useState<any>(histData[3]);
   
-  // We store references to the Three.js objects to manipulate them
   const sceneRef = useRef<{
     scene: THREE.Scene | null;
     camera: THREE.PerspectiveCamera | null;
     renderer: THREE.WebGLRenderer | null;
     groups: Record<string, THREE.Group>;
-    animationId?: number;
-  }>({ scene: null, camera: null, renderer: null, groups: {} });
+    meshes: Record<string, THREE.Mesh[]>;
+  }>({ scene: null, camera: null, renderer: null, groups: {}, meshes: { histogram: [], bar: [], donut: [], graph: [] } });
 
   useEffect(() => {
-    if (!mountRef.current) return;
+    const currentMount = mountRef.current;
+    if (!currentMount) return;
 
     // 1. Setup Scene
-    const W = mountRef.current.clientWidth;
-    const H = mountRef.current.clientHeight;
+    const W = currentMount.clientWidth;
+    const H = currentMount.clientHeight;
     const scene = new THREE.Scene();
     scene.fog = new THREE.Fog(PAL.fog, 70, 140);
 
@@ -96,7 +96,7 @@ export default function Three3DChart() {
     const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
     renderer.setSize(W, H);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
-    mountRef.current.appendChild(renderer.domElement);
+    currentMount.appendChild(renderer.domElement);
 
     // 2. Lighting
     const hemi = new THREE.HemisphereLight(0xa8c4e0, 0x0a0c10, 1.0);
@@ -166,28 +166,24 @@ export default function Three3DChart() {
       groups.graph.add(line);
     });
 
-    // Save to ref
-    sceneRef.current = { scene, camera, renderer, groups };
+    sceneRef.current = { scene, camera, renderer, groups, meshes };
 
     // 5. Animation Loop
     let frameId: number;
     const animate = () => {
       frameId = requestAnimationFrame(animate);
-      
-      // Slow rotation for visual effect
       groups.histogram.rotation.y += 0.001;
       groups.bar.rotation.y += 0.001;
       groups.graph.rotation.y += 0.001;
-      
       renderer.render(scene, camera);
     };
     animate();
 
     // 6. Resize Handler
     const handleResize = () => {
-      if (!mountRef.current) return;
-      const w = mountRef.current.clientWidth;
-      const h = mountRef.current.clientHeight;
+      if (!currentMount) return;
+      const w = currentMount.clientWidth;
+      const h = currentMount.clientHeight;
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
       renderer.setSize(w, h);
@@ -199,7 +195,8 @@ export default function Three3DChart() {
     const mouse = new THREE.Vector2();
     
     const onClick = (e: MouseEvent) => {
-      const rect = mountRef.current!.getBoundingClientRect();
+      if (!currentMount) return;
+      const rect = currentMount.getBoundingClientRect();
       mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
       mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
       
@@ -211,28 +208,28 @@ export default function Three3DChart() {
       if (hits.length > 0) {
         const clickedMesh = hits[0].object as THREE.Mesh;
         const data = clickedMesh.userData.data;
-        
-        // Update Inspector UI
         setInspector(data);
         
-        // Highlight selected
+        // Strictly type the material so TypeScript stops complaining about emissiveIntensity
         activeMeshes.forEach(m => {
-          (m.material as THREE.MeshStandardMaterial).emissiveIntensity = 
-            m === clickedMesh ? PAL.emissiveSelected : PAL.emissiveIdle;
+          const mat = m.material as THREE.MeshStandardMaterial;
+          mat.emissiveIntensity = m === clickedMesh ? PAL.emissiveSelected : PAL.emissiveIdle;
         });
       }
     };
-    mountRef.current.addEventListener("click", onClick);
+    currentMount.addEventListener("click", onClick);
 
-    // 8. Cleanup
+    // 8. Cleanup (Using the cached currentMount prevents memory leaks)
     return () => {
       cancelAnimationFrame(frameId);
       window.removeEventListener("resize", handleResize);
-      if (mountRef.current) {
-        mountRef.current.removeEventListener("click", onClick);
-        mountRef.current.removeChild(renderer.domElement);
+      currentMount.removeEventListener("click", onClick);
+      
+      if (currentMount.contains(renderer.domElement)) {
+        currentMount.removeChild(renderer.domElement);
       }
       renderer.dispose();
+      scene.clear();
     };
   }, []); // Run once on mount
 
@@ -245,7 +242,6 @@ export default function Three3DChart() {
       g.visible = (k === mode);
     });
 
-    // Adjust camera based on mode
     if (camera) {
       if (mode === 'histogram') { camera.position.set(0, 24, 42); camera.lookAt(0, 6, 0); }
       if (mode === 'bar') { camera.position.set(22, 26, 40); camera.lookAt(0, 6, 0); }
@@ -253,7 +249,6 @@ export default function Three3DChart() {
       if (mode === 'graph') { camera.position.set(0, 10, 72); camera.lookAt(0, 0, 0); }
     }
 
-    // Set initial inspector data
     if (mode === 'histogram') setInspector(histData[3]);
     if (mode === 'bar') setInspector(barData[10]);
     if (mode === 'donut') setInspector(donutData[0]);
@@ -263,10 +258,8 @@ export default function Three3DChart() {
 
   return (
     <div className="relative w-full h-full flex flex-col">
-      {/* 3D Canvas Container */}
       <div ref={mountRef} className="flex-1 w-full relative cursor-crosshair" />
 
-      {/* Top Toolbar (Mode Switcher) */}
       <div className="absolute top-4 left-4 flex items-center gap-1 bg-[#0e1116]/80 backdrop-blur-md p-1 rounded-lg border border-white/10 z-10">
         {(['histogram', 'bar', 'donut', 'graph'] as const).map((m) => (
           <button
@@ -279,7 +272,6 @@ export default function Three3DChart() {
         ))}
       </div>
 
-      {/* Bottom Inspector Panel */}
       <div className="border-t border-white/10 bg-[#0e1116] p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 z-10 relative">
         <div className="flex items-center gap-4">
           <div className="w-10 h-10 rounded-lg bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center text-yellow-500 font-bold text-xs font-mono">
@@ -293,7 +285,6 @@ export default function Three3DChart() {
           </div>
         </div>
         
-        {/* Dynamic Metrics */}
         <div className="flex gap-4">
           {mode === 'histogram' && (
             <>
