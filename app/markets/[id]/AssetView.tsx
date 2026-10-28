@@ -104,38 +104,41 @@ export default function AssetView({
       </div>
 
       {/* FULL SCREEN TERMINAL WITH WATERMARK BACKGROUND */}
-      <div className="relative z-10 w-full max-w-[1600px] h-[95vh] rounded-3xl border border-lime-500/20 dark:border-lime-500/10 shadow-[0_8px_32px_0_rgba(132,204,22,0.15)] dark:shadow-[0_8px_32px_0_rgba(0,0,0,0.5)] overflow-hidden bg-[#f4fbf5]/80 dark:bg-[#050806]/80 backdrop-blur-md">
+      {/* ADDED flex-col so the top bar and terminal stack properly */}
+      <div className="relative z-10 w-full max-w-[1600px] h-[95vh] rounded-3xl border border-lime-500/20 dark:border-lime-500/10 shadow-[0_8px_32px_0_rgba(132,204,22,0.15)] dark:shadow-[0_8px_32px_0_rgba(0,0,0,0.5)] overflow-hidden bg-[#f4fbf5]/80 dark:bg-[#050806]/80 backdrop-blur-md flex flex-col">
         
-        {/* FLOATING TRIGGER BUTTONS INSIDE THE TERMINAL */}
-        <div className="absolute top-4 left-4 z-50 group">
+        {/* NEW: THE UNIFIED TOP ACTION BAR */}
+        <div className="h-12 shrink-0 flex items-center justify-between px-4 border-b border-lime-500/10 bg-white/50 dark:bg-[#121A14]/60 backdrop-blur-md z-50">
           <button 
             onClick={() => setIsLeftPanelOpen(true)}
-            className="w-10 h-10 rounded-xl bg-white/80 dark:bg-[#121A14]/90 backdrop-blur-md border border-lime-500/20 flex items-center justify-center text-lime-950 dark:text-white shadow-lg hover:bg-lime-500/20 transition-all hover:scale-105 active:scale-95"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-bold text-lime-800 dark:text-lime-200 hover:bg-lime-500/10 transition-all active:scale-95"
           >
-            <Menu size={20} />
+            <Menu size={18} /> Open Trade
           </button>
-          <div className="absolute top-1/2 -translate-y-1/2 left-full ml-3 px-3 py-1.5 bg-lime-950 text-white text-xs font-bold rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-            Open Trade
+          <div className="text-xs font-bold text-lime-600/60 dark:text-lime-400/40 uppercase tracking-widest font-mono hidden sm:block">
+            {coin.name} / {quoteCurrency.name}
           </div>
-        </div>
-
-        <div className="absolute top-4 right-4 z-50 group">
           <button 
             onClick={() => setIsRightPanelOpen(true)}
-            className="w-10 h-10 rounded-xl bg-white/80 dark:bg-[#121A14]/90 backdrop-blur-md border border-lime-500/20 flex items-center justify-center text-cyan-500 shadow-lg hover:bg-cyan-500/20 transition-all hover:scale-105 hover:rotate-180 active:scale-95 duration-500"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-bold text-cyan-600 dark:text-cyan-400 hover:bg-cyan-500/10 transition-all active:scale-95 group"
           >
-            <Hexagon size={20} />
+            <Hexagon size={18} className="group-hover:rotate-180 transition-transform duration-500" /> View Chart
           </button>
-          <div className="absolute top-1/2 -translate-y-1/2 right-full mr-3 px-3 py-1.5 bg-lime-950 text-white text-xs font-bold rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-            View Chart
-          </div>
         </div>
 
-        <TradingTerminal 
-          coin={coin} 
-          positions={positions} 
-          onClosePosition={handleClosePosition}
-        />
+        {/* THE TERMINAL */}
+        <div className="flex-1 relative overflow-hidden">
+          <TradingTerminal 
+            coin={coin} 
+            positions={positions} 
+            onClosePosition={handleClosePosition}
+            // ADDED: This connects the terminal's Buy/Sell buttons to the trading logic
+            onPlaceTrade={(side) => {
+              const currentPrice = coin.current_price;
+              handlePlaceOrder(side, 1, currentPrice);
+            }}
+          />
+        </div>
       </div>
 
       {/* RENDER SIDE PANELS (Overlays) */}

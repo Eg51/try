@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence, Variants } from "framer-motion";
 import { X, ArrowUpRight, ArrowDownRight, SlidersHorizontal } from "lucide-react";
 import type { Position, Quote } from "./AssetView";
@@ -22,30 +22,51 @@ const itemVariants: Variants = {
   hidden: { opacity: 0, y: 15 },
   visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
 };
-
 export default function TradingSidePanel({ 
   isOpen, 
   onClose, 
   coin, 
   quoteCurrency,
-  positions,
+  positions, 
   onPlaceOrder
 }: { 
-  isOpen: boolean, 
-  onClose: () => void, 
-  coin: any, 
-  quoteCurrency: Quote,
-  positions: Position[],
-  onPlaceOrder: (side: "buy" | "sell", lots: number, entry: number, sl?: number, tp?: number) => void
+  isOpen: boolean; 
+  onClose: () => void; 
+  coin: any; 
+  quoteCurrency: Quote;
+  positions?: Position[];
+  onPlaceOrder: (side: "buy" | "sell", lots: number, entry: number, sl?: number, tp?: number) => void;
 }) {
+// export default function TradingSidePanel({ 
+//   isOpen, 
+//   onClose, 
+//   coin, 
+//   quoteCurrency,
+//   onPlaceOrder
+// }: { 
+//   isOpen: boolean, 
+//   onClose: () => void, 
+//   coin: any, 
+//   quoteCurrency: Quote,
+//   onPlaceOrder: (side: "buy" | "sell", lots: number, entry: number, sl?: number, tp?: number) => void
+// }) {
   const [side, setSide] = useState<"buy" | "sell">("buy");
   
-  const currentPrice = coin.current_price * quoteCurrency.rate;
+  // SAFE FALLBACK: Prevent crashes if coin data is missing
+  const currentPrice = (coin?.current_price || 0) * (quoteCurrency?.rate || 1);
   
-  const [entry, setEntry] = useState(currentPrice.toString());
+  const [entry, setEntry] = useState(currentPrice > 0 ? currentPrice.toString() : "");
   const [sl, setSl] = useState("");
   const [tp, setTp] = useState("");
   const [qty, setQty] = useState("1");
+
+  // FIX: If the price updates while the panel is open, update the entry field
+  // ONLY if the user hasn't manually typed a custom price.
+  useEffect(() => {
+    if (entry === "" || entry === (currentPrice / quoteCurrency.rate).toString()) {
+      setEntry(currentPrice.toString());
+    }
+  }, [currentPrice, quoteCurrency.rate]);
 
   const entryNum = parseFloat(stripCommas(entry)) || 0;
   const qtyNum = parseFloat(stripCommas(qty)) || 0;
@@ -59,6 +80,7 @@ export default function TradingSidePanel({
   const rr = risk > 0 && reward > 0 ? (reward / risk).toFixed(2) : "—";
 
   const handlePlaceOrder = () => {
+    if (entryNum <= 0 || qtyNum <= 0) return; // Prevent bad orders
     onPlaceOrder(side, qtyNum, entryNum, slNum || undefined, tpNum || undefined);
     setQty("1");
     setSl("");
@@ -68,13 +90,13 @@ export default function TradingSidePanel({
 
   // Generate a mini chart for the side panel (Deterministic, no random)
   const candles = Array.from({ length: 30 }).map((_, i) => {
-    const open = currentPrice * (0.95 + i * 0.002);
-    const close = open + (Math.sin(i * 0.5) * 0.01) * currentPrice;
+    const open = currentPrice * (0.95 + i * 0.002) || 100;
+    const close = open + (Math.sin(i * 0.5) * 0.01) * (currentPrice || 100);
     return { 
       open, 
       close, 
-      high: Math.max(open, close) + (currentPrice * 0.001), 
-      low: Math.min(open, close) - (currentPrice * 0.001), 
+      high: Math.max(open, close) + (currentPrice * 0.001 || 0.1), 
+      low: Math.min(open, close) - (currentPrice * 0.001 || 0.1), 
       up: close >= open 
     };
   });
@@ -117,13 +139,13 @@ export default function TradingSidePanel({
                 className="rounded-3xl border border-lime-500/20 dark:border-lime-500/10 bg-white/60 dark:bg-[#0a0f0b]/80 backdrop-blur-xl p-4 shadow-sm"
               >
                 <div className="flex justify-between items-center mb-3">
-                  <span className="text-sm font-extrabold text-lime-950 dark:text-[#ecfdf5] uppercase">{coin.symbol} / {quoteCurrency.name}</span>
+                  <span className="text-sm font-extrabold text-lime-950 dark:text-[#ecfdf5] uppercase">{coin?.symbol} / {quoteCurrency?.name}</span>
                   <motion.span 
                     whileHover={{ scale: 1.05 }}
-                    className={`text-xs font-mono font-bold flex items-center gap-1 cursor-default ${coin.price_change_percentage_24h >= 0 ? 'text-green-500 bg-green-500/10 px-2 py-1 rounded-md' : 'text-red-500 bg-red-500/10 px-2 py-1 rounded-md'}`}
+                    className={`text-xs font-mono font-bold flex items-center gap-1 cursor-default ${(coin?.price_change_percentage_24h || 0) >= 0 ? 'text-green-500 bg-green-500/10 px-2 py-1 rounded-md' : 'text-red-500 bg-red-500/10 px-2 py-1 rounded-md'}`}
                   >
-                    {coin.price_change_percentage_24h >= 0 ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
-                    {Math.abs(coin.price_change_percentage_24h).toFixed(2)}%
+                    {(coin?.price_change_percentage_24h || 0) >= 0 ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
+                    {Math.abs(coin?.price_change_percentage_24h || 0).toFixed(2)}%
                   </motion.span>
                 </div>
                 
@@ -169,7 +191,7 @@ export default function TradingSidePanel({
                 </div>
 
                 <motion.div variants={itemVariants}>
-                  <label className="block text-[10px] font-bold text-lime-800/60 dark:text-lime-200/50 uppercase mb-1.5">Entry Price ({quoteCurrency.symbol})</label>
+                  <label className="block text-[10px] font-bold text-lime-800/60 dark:text-lime-200/50 uppercase mb-1.5">Entry Price ({quoteCurrency?.symbol})</label>
                   <input type="text" value={formatWithCommas(entry)} onChange={(e) => setEntry(stripCommas(e.target.value))} className="w-full bg-white/50 dark:bg-[#050806]/50 border border-lime-500/20 dark:border-lime-500/10 rounded-xl px-4 py-2.5 text-sm font-mono font-bold text-lime-950 dark:text-white focus:outline-none focus:border-lime-500 transition-colors shadow-sm" />
                 </motion.div>
 
@@ -190,16 +212,23 @@ export default function TradingSidePanel({
                 </motion.div>
 
                 <motion.div variants={itemVariants} className="bg-lime-50/50 dark:bg-black/40 border border-lime-500/20 dark:border-lime-500/10 rounded-xl p-4 space-y-2 text-[11px] font-mono">
-                  <div className="flex justify-between text-lime-800/70 dark:text-lime-200/50"><span>Notional</span><span className="text-lime-950 dark:text-white font-bold">{quoteCurrency.symbol}{formatWithCommas(notional.toFixed(2))}</span></div>
-                  <div className="flex justify-between text-lime-800/70 dark:text-lime-200/50"><span>Fee (0.4%)</span><span className="text-lime-600 dark:text-lime-400 font-bold">{quoteCurrency.symbol}{formatWithCommas(fee.toFixed(2))}</span></div>
-                  <div className="flex justify-between text-lime-800/70 dark:text-lime-200/50"><span>Risk</span><span className="text-red-500 font-bold">-{quoteCurrency.symbol}{formatWithCommas(risk.toFixed(2))}</span></div>
-                  <div className="flex justify-between text-lime-800/70 dark:text-lime-200/50"><span>Reward</span><span className="text-green-500 font-bold">+{quoteCurrency.symbol}{formatWithCommas(reward.toFixed(2))}</span></div>
+                  <div className="flex justify-between text-lime-800/70 dark:text-lime-200/50"><span>Notional</span><span className="text-lime-950 dark:text-white font-bold">{quoteCurrency?.symbol}{formatWithCommas(notional.toFixed(2))}</span></div>
+                  <div className="flex justify-between text-lime-800/70 dark:text-lime-200/50"><span>Fee (0.4%)</span><span className="text-lime-600 dark:text-lime-400 font-bold">{quoteCurrency?.symbol}{formatWithCommas(fee.toFixed(2))}</span></div>
+                  <div className="flex justify-between text-lime-800/70 dark:text-lime-200/50"><span>Risk</span><span className="text-red-500 font-bold">-{quoteCurrency?.symbol}{formatWithCommas(risk.toFixed(2))}</span></div>
+                  <div className="flex justify-between text-lime-800/70 dark:text-lime-200/50"><span>Reward</span><span className="text-green-500 font-bold">+{quoteCurrency?.symbol}{formatWithCommas(reward.toFixed(2))}</span></div>
                   <div className="flex justify-between text-lime-800/70 dark:text-lime-200/50 border-t border-lime-500/10 dark:border-lime-500/10 pt-2 mt-2">
                     <span>R:R Ratio</span><span className="text-amber-500 font-bold">{rr === "—" ? "—" : `${rr}:1`}</span>
                   </div>
                 </motion.div>
 
-                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.95 }} variants={itemVariants} onClick={handlePlaceOrder} className={`w-full py-3.5 rounded-xl text-sm font-bold tracking-wide uppercase shadow-lg ${side === 'buy' ? 'bg-green-500 hover:bg-green-600 text-white shadow-green-500/20' : 'bg-red-500 hover:bg-red-600 text-white shadow-red-500/20'}`}>
+                <motion.button 
+                  whileHover={{ scale: 1.02 }} 
+                  whileTap={{ scale: 0.95 }} 
+                  variants={itemVariants} 
+                  onClick={handlePlaceOrder} 
+                  disabled={entryNum <= 0 || qtyNum <= 0}
+                  className={`w-full py-3.5 rounded-xl text-sm font-bold tracking-wide uppercase shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed ${side === 'buy' ? 'bg-green-500 hover:bg-green-600 text-white shadow-green-500/20' : 'bg-red-500 hover:bg-red-600 text-white shadow-red-500/20'}`}
+                >
                   Open {side === 'buy' ? 'Long' : 'Short'} Position
                 </motion.button>
               </motion.div>
