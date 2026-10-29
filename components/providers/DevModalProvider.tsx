@@ -3,34 +3,67 @@
 
 import { createContext, useContext, useState, ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Construction, X } from "lucide-react";
+import { Construction, X, AlertTriangle, CheckCircle, XCircle } from "lucide-react";
 
-// 1. Create the Context
+type ModalType = "info" | "warning" | "error" | "success";
+
+// 👇 Added secondaryAction type
+type SecondaryAction = {
+  label: string;
+  onClick: () => void;
+};
+
 type DevModalContextType = {
-  openModal: (featureName?: string) => void;
+  openModal: (titleOrFeature?: string, message?: string, type?: ModalType, secondaryAction?: SecondaryAction) => void;
   closeModal: () => void;
 };
 
 const DevModalContext = createContext<DevModalContextType | undefined>(undefined);
 
-// 2. The Provider Component
 export function DevModalProvider({ children }: { children: ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [feature, setFeature] = useState("This");
+  const [title, setTitle] = useState("Under Construction");
+  const [message, setMessage] = useState("");
+  const [type, setType] = useState<ModalType>("info");
+  const [secondaryAction, setSecondaryAction] = useState<SecondaryAction | null>(null); // 👈 New state
 
-  const openModal = (featureName?: string) => {
-    if (featureName) setFeature(featureName);
-    else setFeature("This");
+  const openModal = (titleOrFeature?: string, customMessage?: string, modalType?: ModalType, action?: SecondaryAction) => {
+    if (customMessage) {
+      setTitle(titleOrFeature || "Notice");
+      setMessage(customMessage);
+      setType(modalType || "info");
+      setSecondaryAction(action || null); // 👈 Set the secondary action
+    } else {
+      setTitle("Under Construction");
+      setMessage(`The "${titleOrFeature || 'This'}" feature is currently in development. We are working hard to make it available soon!`);
+      setType("info");
+      setSecondaryAction(null);
+    }
     setIsOpen(true);
   };
 
   const closeModal = () => setIsOpen(false);
 
+  const renderIcon = () => {
+    switch (type) {
+      case "warning": return <AlertTriangle className="text-amber-500" size={32} />;
+      case "error": return <XCircle className="text-red-500" size={32} />;
+      case "success": return <CheckCircle className="text-green-500" size={32} />;
+      default: return <Construction className="text-lime-600 dark:text-lime-400" size={32} />;
+    }
+  };
+
+  const iconBg = {
+    warning: "bg-amber-100 dark:bg-amber-900/30",
+    error: "bg-red-100 dark:bg-red-900/30",
+    success: "bg-green-100 dark:bg-green-900/30",
+    info: "bg-lime-100 dark:bg-lime-900/30",
+  }[type];
+
   return (
     <DevModalContext.Provider value={{ openModal, closeModal }}>
       {children}
 
-      {/* The Modal UI */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -55,23 +88,38 @@ export function DevModalProvider({ children }: { children: ReactNode }) {
                 <X size={20} />
               </button>
 
-              <div className="w-16 h-16 mx-auto bg-lime-100 dark:bg-lime-900/30 rounded-2xl flex items-center justify-center mb-6 shadow-inner">
-                <Construction className="text-lime-600 dark:text-lime-400" size={32} />
+              <div className={`w-16 h-16 mx-auto ${iconBg} rounded-2xl flex items-center justify-center mb-6 shadow-inner`}>
+                {renderIcon()}
               </div>
 
               <h2 className="text-2xl font-extrabold text-lime-950 dark:text-[#ecfdf5] mb-2">
-                Under Construction
+                {title}
               </h2>
               <p className="text-lime-800/70 dark:text-lime-200/60 font-medium mb-8">
-                The <span className="font-bold text-lime-700 dark:text-lime-300">"{feature}"</span> feature is currently in development. We are working hard to make it avalable soon!
+                {message}
               </p>
 
-              <button
-                onClick={closeModal}
-                className="w-full h-12 bg-lime-600 cursor-pointer hover:bg-lime-700 text-white font-bold text-base rounded-xl shadow-lg shadow-lime-600/20 transition-all active:scale-[0.98]"
-              >
-                 click to return
-              </button>
+              {/* 👇 UPDATED BUTTON FOOTER 👇 */}
+              <div className="flex gap-3">
+                {secondaryAction && (
+                  <button
+                    onClick={() => {
+                      closeModal();
+                      secondaryAction.onClick();
+                    }}
+                    className="flex-1 h-12 bg-gray-200 hover:bg-gray-300 dark:bg-[#121A14] dark:hover:bg-[#1a261d] text-lime-950 dark:text-white font-bold text-sm rounded-xl transition-all active:scale-[0.98]"
+                  >
+                    {secondaryAction.label}
+                  </button>
+                )}
+                <button
+                  onClick={closeModal}
+                  className={`${secondaryAction ? 'flex-1' : 'w-full'} h-12 bg-lime-600 cursor-pointer hover:bg-lime-700 text-white font-bold text-sm rounded-xl shadow-lg shadow-lime-600/20 transition-all active:scale-[0.98]`}
+                >
+                  Click to return
+                </button>
+              </div>
+
             </motion.div>
           </motion.div>
         )}
@@ -80,7 +128,6 @@ export function DevModalProvider({ children }: { children: ReactNode }) {
   );
 }
 
-// 3. The Custom Hook to trigger it
 export function useDevModal() {
   const context = useContext(DevModalContext);
   if (!context) {

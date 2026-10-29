@@ -3,42 +3,63 @@
 
 import { getServerSession } from "@/lib/session";
 import connectDB from "@/lib/db";
-import { KycSubmission } from "@/lib/models/Kyc";
 import User from "@/lib/models/User";
+import { KycSubmission } from "@/lib/models/Kyc";
+import { revalidatePath } from "next/cache";
 
-export async function submitKyc(formData: FormData) {
+export async function submitKyc(tier: 1 | 2 | 3, formData: any) {
+  const session = await getServerSession();
+  if (!session) return { error: "Unauthorized" };
+
+  await connectDB();
+
   try {
-    const session = await getServerSession();
-    if (!session) return { error: "Unauthorized" };
-
-    const idType = formData.get("idType") as string;
-    const idNumber = formData.get("idNumber") as string;
-    const tierRequested = Number(formData.get("tier")) as 1 | 2 | 3;
-
-    if (!idType || !idNumber) return { error: "Please fill in all fields." };
-
-    await connectDB();
-
-    // Check if they already have a pending submission
-    const existing = await KycSubmission.findOne({ userId: session.id, status: 'pending' });
-    if (existing) return { error: "You already have a pending submission." };
-
-    // Create the submission
     await KycSubmission.create({
       userId: session.id,
-      tierRequested,
+      status: 'pending',
+      tierRequested: tier, 
       documents: {
-        idType,
-        idNumber,
-        proofOfAddressUrl: "https://mock-s3-url.com/file.pdf", // Mock URL
-      },
+        idType: formData.idType || "N/A",
+        idNumber: formData.idNumber || "N/A",
+        proofOfAddressUrl: formData.proofOfAddressUrl || "",
+        sourceOfWealthUrl: formData.sourceOfWealthUrl || "",
+        selfieLivenessUrl: formData.selfieLivenessUrl || "",
+      }
     });
 
-    // Update the user status (we can add a 'kycStatus' field to User, but for now we just leave tier as is until Admin approves)
+    await User.findByIdAndUpdate(session.id, { kycTier: tier });
+    
+    revalidatePath("/dashboard");
+    revalidatePath("/dashboard/kyc");
     
     return { success: true };
   } catch (error) {
-    console.error("KYC Error:", error);
+    console.error(error);
     return { error: "Failed to submit KYC." };
+  }
+}
+
+// 👇 ENSURE THIS FUNCTION IS EXPORTED 👇
+export async function deleteKyc() {
+  const session = await getServerSession();
+  if (!session) return { error: "Unauthorized" };
+
+  await connectDB();
+
+  try {
+    // Delete all submissions for this user
+    await KycSubmission.deleteMany({ userId: session.id });
+    
+    // Reset their tier to 0
+    await User.findByIdAndUpdate(session.id, { kycTier: 0 });
+
+    revalidatePath("/dashboard");
+    revalidatePath("/dashboard/kyc");
+    revalidatePath("/dashboard/profile");
+
+    return { success: true };
+  } catch (error) {
+    console.error(error);
+    return { error: "Failed to delete KYC data." };
   }
 }

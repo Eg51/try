@@ -6,9 +6,11 @@ export interface IKycSubmission extends Document {
   status: 'unverified' | 'pending' | 'approved' | 'rejected';
   tierRequested: 1 | 2 | 3;
   documents: {
-    idType: string; // e.g., "National ID", "Passport"
+    idType: string;
     idNumber: string;
-    proofOfAddressUrl: string; // In a real app, this is the S3/Cloudinary URL
+    proofOfAddressUrl?: string; // Optional because it's only for Tier 2+
+    sourceOfWealthUrl?: string; // Optional because it's only for Tier 3
+    selfieLivenessUrl?: string; // Required for Tier 1, but optional in DB just in case
   };
   rejectionReason?: string;
   submittedAt: Date;
@@ -23,7 +25,9 @@ const KycSchema = new Schema<IKycSubmission>(
     documents: {
       idType: { type: String, required: true },
       idNumber: { type: String, required: true },
-      proofOfAddressUrl: { type: String, required: true }, // Mock URL for now
+      proofOfAddressUrl: { type: String },
+      sourceOfWealthUrl: { type: String },
+      selfieLivenessUrl: { type: String },
     },
     rejectionReason: { type: String },
     submittedAt: { type: Date, default: Date.now },

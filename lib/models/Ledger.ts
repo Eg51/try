@@ -27,7 +27,6 @@ const LedgerAccountSchema = new Schema<ILedgerAccount>(
   { timestamps: true }
 );
 
-// Notice the index is changed. It now accounts for null userIds for system accounts.
 LedgerAccountSchema.index({ userId: 1, assetId: 1, type: 1 }, { unique: true, partialFilterExpression: { userId: { $type: "objectId" } } });
 LedgerAccountSchema.index({ assetId: 1, type: 1 }, { unique: true, partialFilterExpression: { userId: null } });
 
@@ -35,7 +34,7 @@ export const LedgerAccount: Model<ILedgerAccount> =
   mongoose.models.LedgerAccount || mongoose.model<ILedgerAccount>('LedgerAccount', LedgerAccountSchema);
 
 // ==========================================
-// 2. LEDGER TRANSACTION (Double-Entry)
+// 2. LEDGER TRANSACTION (Immutable Double-Entry)
 // ==========================================
 export interface ILedgerEntry {
   accountId: mongoose.Types.ObjectId;
@@ -64,11 +63,7 @@ const LedgerEntrySchema = new Schema<ILedgerEntry>({
 
 const LedgerTransactionSchema = new Schema<ILedgerTransaction>(
   {
-    kind: { 
-      type: String, 
-      enum: ['deposit', 'trade', 'fee', 'withdrawal', 'adjustment'], 
-      required: true 
-    },
+    kind: { type: String, enum: ['deposit', 'trade', 'fee', 'withdrawal', 'adjustment'], required: true },
     refType: { type: String, enum: ['order', 'trade', 'manual'], required: true },
     refId: { type: String, required: true, index: true },
     idempotencyKey: { type: String, required: true, unique: true, index: true },
@@ -77,26 +72,51 @@ const LedgerTransactionSchema = new Schema<ILedgerTransaction>(
   { timestamps: { createdAt: true, updatedAt: false } }
 );
 
-// FIX: Use async function and throw, rather than next() callbacks
 LedgerTransactionSchema.pre('save', async function (this: ILedgerTransaction) {
   const assetBalances: Record<string, number> = {};
-
-  // 1. Calculate the total credits and debits for EACH asset
   for (const entry of this.entries) {
-    if (!assetBalances[entry.assetId]) {
-      assetBalances[entry.assetId] = 0;
-    }
+    if (!assetBalances[entry.assetId]) assetBalances[entry.assetId] = 0;
     const amount = entry.direction === 'credit' ? entry.amount : -entry.amount;
     assetBalances[entry.assetId] += amount;
   }
-
-  // 2. Verify that every single asset sums exactly to zero
   for (const [assetId, balance] of Object.entries(assetBalances)) {
-    if (balance !== 0) {
-      throw new Error(`Ledger imbalance for ${assetId}: Must sum to zero, but got ${balance}`);
-    }
+    if (balance !== 0) throw new Error(`Ledger imbalance for ${assetId}: Must sum to zero, but got ${balance}`);
   }
 });
 
 export const LedgerTransaction: Model<ILedgerTransaction> = 
   mongoose.models.LedgerTransaction || mongoose.model<ILedgerTransaction>('LedgerTransaction', LedgerTransactionSchema);
+
+// ==========================================
+// 3. PAYMENT REQUEST (Deposit/Withdrawal State)
+// ==========================================
+// 👇 THIS IS THE NEW SCHEMA TO HANDLE REJECTIONS AND PENDING STATES
+export type PaymentStatus = 'pending' | 'processing' | 'completed' | 'rejected' | 'failed';
+
+export interface IPaymentRequest extends Document {
+  userId: mongoose.Types.ObjectId;
+  type: 'deposit' | 'withdrawal';
+  amount: number; // In cents
+  assetId: string;
+  method: string;
+  status: PaymentStatus;
+  rejectionReason?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const PaymentRequestSchema = new Schema<IPaymentRequest>(
+  {
+    userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+    type: { type: String, enum: ['deposit', 'withdrawal'], required: true },
+    amount: { type: Number, required: true },
+    assetId: { type: String, default: 'USD' },
+    method: { type: String, required: true },
+    status: { type: String, enum: ['pending', 'processing', 'completed', 'rejected', 'failed'], default: 'pending', index: true },
+    rejectionReason: { type: String },
+  },
+  { timestamps: true }
+);
+
+export const PaymentRequest: Model<IPaymentRequest> = 
+  mongoose.models.PaymentRequest || mongoose.model<IPaymentRequest>('PaymentRequest', PaymentRequestSchema);

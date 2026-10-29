@@ -25,6 +25,7 @@ export async function getServerSession(): Promise<SafeUser | null> {
       id: user._id.toString(),
       displayName: user.displayName,
       tier: user.kycTier,
+      email: user.email,
       displayCurrency: user.displayCurrency.assetId,
       role: user.role,
     };

@@ -134,6 +134,9 @@ export async function loginWithFirebase(rawData: unknown): Promise<AuthResult> {
 
     const cookieStore = await cookies();
     cookieStore.set("session", sessionCookie, { maxAge: expiresIn / 1000, httpOnly: true, secure: process.env.NODE_ENV === "production", path: "/", sameSite: "lax" });
+    
+    // 👇 THIS IS THE NEW LINE: Clears the skip cookie so they must face KYC again
+    cookieStore.delete("kyc_skipped");
 
     return { success: true };
   } catch (error) {
@@ -145,5 +148,6 @@ export async function loginWithFirebase(rawData: unknown): Promise<AuthResult> {
 export async function logout() {
   const cookieStore = await cookies();
   cookieStore.delete("session");
+  cookieStore.delete("kyc_skipped"); // Also clear skip cookie on logout for good measure
   redirect("/login");
 }
