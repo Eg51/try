@@ -1,3 +1,19 @@
+  // app/admin/kyc/[id]/page.tsx
+import { connection } from "next/server";
+
+export const instant = false;
+
+// 👇 THE FIX: Added 'async' here
+export default async function AdminKycPlaceholder() {
+  await connection();
+
+  return (
+    <div className="p-8 text-center text-lime-500">
+      <h1 className="text-2xl font-bold">Admin KYC Review</h1>
+      <p className="mt-2 text-sm">This dashboard is under construction.</p>
+    </div>
+  );
+}
 // // app/admin/kyc/[id]/page.tsx
 // import connectDB from "@/lib/db";
 // import { KycSubmission } from "@/lib/models/Kyc";

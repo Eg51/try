@@ -20,3 +20,21 @@
 //     />
 //   );
 // }
+// app/admin/kyc/page.tsx
+// app/admin/kyc/page.tsx (and app/admin/kyc/[id]/page.tsx)
+import { connection } from "next/server";
+
+// 👇 Tells Next.js 16 this route is dynamic
+export const instant = false;
+
+export default async function AdminKycPlaceholder() {
+  // 👇 Opts out of static prerendering
+  await connection();
+
+  return (
+    <div className="p-8 text-center text-lime-500">
+      <h1 className="text-2xl font-bold">Admin KYC Review</h1>
+      <p className="mt-2 text-sm">This dashboard is under construction.</p>
+    </div>
+  );
+}

@@ -9,6 +9,7 @@ import SettingsModal from "@/components/SettingsModal"; // 👈 Import the new m
 
 interface HeaderActionsProps {
   onHelpClick?: () => void;
+  onSettingsClick?: () => void;
   onUserClick?: () => void;
   hideNotifications?: boolean;
   helpId?: string;
@@ -20,6 +21,7 @@ interface HeaderActionsProps {
 export default function HeaderActions({ 
   onHelpClick, 
   onUserClick, 
+  onSettingsClick, 
   hideNotifications = false,
   helpId,
   themeId,
