@@ -1,5 +1,5 @@
-// app/actions/kyc.ts
-"use server";
+// app/actions/admin-kyc.ts
+"use server"; // 👈 MUST be the very first line
 
 import { getServerSession } from "@/lib/session";
 import connectDB from "@/lib/db";
@@ -7,38 +7,59 @@ import User from "@/lib/models/User";
 import { KycSubmission } from "@/lib/models/Kyc";
 import { revalidatePath } from "next/cache";
 
-// 👇 Your signature remains exactly the same
-export async function submitKyc(tier: number, formData: any) {
+export async function getPendingKycRequests() {
   const session = await getServerSession();
-  if (!session) return { error: "Unauthorized" };
+  if (!session || session.role !== "admin") return { error: "Unauthorized" };
 
   await connectDB();
 
   try {
-    // 👇 We cast it to 1 | 2 | 3 to satisfy Mongoose/TypeScript
-    const validTier = Math.min(Math.max(tier, 1), 3) as 1 | 2 | 3;
+    const requests = await KycSubmission.find({ status: "pending" })
+      .populate("userId", "email displayName kycTier")
+      .sort({ createdAt: 1 })
+      .lean();
 
-    await KycSubmission.create({
-      userId: session.id,
-      status: 'pending', 
-      tierRequested: validTier, // 👈 Using the casted variable
-      documents: {
-        idType: formData.idType || "N/A",
-        idNumber: formData.idNumber || "N/A",
-        proofOfAddressUrl: formData.proofOfAddressUrl || "",
-        sourceOfWealthUrl: formData.sourceOfWealthUrl || "",
-        selfieLivenessUrl: formData.selfieLivenessUrl || "",
-      }
-    });
+    return { success: true, requests: JSON.parse(JSON.stringify(requests)) };
+  } catch (error) {
+    return { error: "Failed to fetch KYC requests" };
+  }
+}
 
-    await User.findByIdAndUpdate(session.id, { kycTier: validTier });
-    
-    revalidatePath("/dashboard");
+// 👇 ENSURE THIS SAYS 'export'
+export async function reviewKycSubmission(
+  submissionId: string, 
+  action: "approve" | "reject", 
+  reason?: string
+) {
+  const session = await getServerSession();
+  if (!session || session.role !== "admin") return { error: "Unauthorized" };
+
+  await connectDB();
+
+  try {
+    const submission = await KycSubmission.findById(submissionId);
+    if (!submission) return { error: "Submission not found" };
+
+    if (action === "approve") {
+      submission.status = "approved";
+      submission.reviewedAt = new Date();
+      await submission.save();
+
+      await User.findByIdAndUpdate(submission.userId, { 
+        kycTier: submission.tierRequested 
+      });
+    } else {
+      submission.status = "rejected";
+      submission.rejectionReason = reason || "Documents not clear.";
+      submission.reviewedAt = new Date();
+      await submission.save();
+    }
+
+    revalidatePath("/admin/kyc");
     revalidatePath("/dashboard/kyc");
     
     return { success: true };
   } catch (error) {
-    console.error(error);
-    return { error: "Failed to submit KYC." };
+    return { error: "Failed to process submission" };
   }
 }

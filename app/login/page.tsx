@@ -209,24 +209,50 @@ export default function LoginPage() {
     setTourStep(-1);
     window.location.href = "/demo";
   };
-
-  useEffect(() => {
+    useEffect(() => {
     async function handleRedirectResult() {
       if (redirectHandled.current) return;
       redirectHandled.current = true;
+      
       try {
         const result = await getRedirectResult(auth);
         if (result) {
           setIsLoading(true);
           const token = await result.user.getIdToken();
           const response = await loginWithFirebase({ token });
-          if ("error" in response && response.error) { setError(response.error); setIsLoading(false); } 
-          else { window.location.href = "/dashboard"; }
+          
+          if ("error" in response && response.error) { 
+            setError(response.error); 
+            setIsLoading(false); 
+          } else { 
+            // 👇 Hard redirect to ensure the session cookie is registered
+            window.location.href = "/dashboard"; 
+          }
         }
-      } catch (err: any) { setError(err.message || "Authentication failed."); setIsLoading(false); }
+      } catch (err: any) { 
+        setError(err.message || "Authentication failed."); 
+        setIsLoading(false); 
+      }
     }
     handleRedirectResult();
   }, []);
+  // useEffect(() => {
+  //   async function handleRedirectResult() {
+  //     if (redirectHandled.current) return;
+  //     redirectHandled.current = true;
+  //     try {
+  //       const result = await getRedirectResult(auth);
+  //       if (result) {
+  //         setIsLoading(true);
+  //         const token = await result.user.getIdToken();
+  //         const response = await loginWithFirebase({ token });
+  //         if ("error" in response && response.error) { setError(response.error); setIsLoading(false); } 
+  //         else { window.location.href = "/dashboard"; }
+  //       }
+  //     } catch (err: any) { setError(err.message || "Authentication failed."); setIsLoading(false); }
+  //   }
+  //   handleRedirectResult();
+  // }, []);
 
   async function handleEmailAuth(e: React.FormEvent) {
     e.preventDefault();
@@ -242,7 +268,7 @@ export default function LoginPage() {
         const idToken = await userCredential.user.getIdToken();
         const finalRes = await loginWithFirebase({ token: idToken });
         if ("error" in finalRes && finalRes.error) { setError(finalRes.error); setIsLoading(false); } 
-        else { router.push("/dashboard"); router.refresh(); }
+        else {  window.location.href = "/dashboard";}
       } catch (err: any) { setError("Failed to establish secure session."); setIsLoading(false); }
     }
   }
@@ -262,8 +288,7 @@ export default function LoginPage() {
       setIsLoading(false);
     }
   }
-
-  async function handleBiometricLogin() {
+    async function handleBiometricLogin() {
     setIsLoading(true); setError(null);
     try {
       const options = await getAuthenticationOptions();
@@ -274,11 +299,39 @@ export default function LoginPage() {
         const userCredential = await signInWithCustomToken(auth, verification.customToken);
         const idToken = await userCredential.user.getIdToken(); 
         const finalRes = await loginWithFirebase({ token: idToken });
-        if ("error" in finalRes && finalRes.error) { setError(finalRes.error); setIsLoading(false); } 
-        else { router.push("/dashboard"); router.refresh(); }
-      } else { setError("Biometric authentication failed."); setIsLoading(false); }
-    } catch (err: any) { setError(err.message || "Biometric login failed."); setIsLoading(false); }
+        
+        if ("error" in finalRes && finalRes.error) { 
+          setError(finalRes.error); 
+          setIsLoading(false); 
+        } else { 
+          // 👇 CHANGED TO HARD REDIRECT
+          window.location.href = "/dashboard"; 
+        }
+      } else { 
+        setError("Biometric authentication failed."); 
+        setIsLoading(false); 
+      }
+    } catch (err: any) { 
+      setError(err.message || "Biometric login failed."); 
+      setIsLoading(false); 
+    }
   }
+  // async function handleBiometricLogin() {
+  //   setIsLoading(true); setError(null);
+  //   try {
+  //     const options = await getAuthenticationOptions();
+  //     const authResp = await startAuthentication({ optionsJSON: options as any });
+  //     const verification = await verifyAuthentication(authResp);
+      
+  //     if (verification.success && verification.customToken) {
+  //       const userCredential = await signInWithCustomToken(auth, verification.customToken);
+  //       const idToken = await userCredential.user.getIdToken(); 
+  //       const finalRes = await loginWithFirebase({ token: idToken });
+  //       if ("error" in finalRes && finalRes.error) { setError(finalRes.error); setIsLoading(false); } 
+  //       else { router.push("/dashboard"); router.refresh(); }
+  //     } else { setError("Biometric authentication failed."); setIsLoading(false); }
+  //   } catch (err: any) { setError(err.message || "Biometric login failed."); setIsLoading(false); }
+  // }
 
   const getTooltipStyle = () => {
     if (!tourElementRect) return { opacity: 0 };
@@ -398,11 +451,11 @@ export default function LoginPage() {
             userId="tour-user-icon"
             onHelpClick={startTour}
             onUserClick={() => openModal("User Profile")}
-            onSettingsClick={() => setIsSettingsOpen(true)} 
+            // onSettingsClick={() => setIsSettingsOpen(true)} 
             forceOpen={tourStep >= 0 && tourStep <= 2} 
           />
         </div>
-        
+
         <div className="text-center mb-6">
           <h1 className="text-2xl font-extrabold text-lime-950 dark:text-[#ecfdf5] tracking-tight">{isLogin ? "Welcome Back" : "Create an Account"}</h1>
           <p className="text-sm text-lime-800/70 dark:text-lime-200/50 mt-1 font-medium">{isLogin ? "Enter your details to access your account." : "Join the premier trading exchange."}</p>

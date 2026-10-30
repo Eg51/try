@@ -1,12 +1,12 @@
+// next.config.ts
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
   cacheComponents: true,
   partialPrefetching: true,
   
-  // FIX: Tell Next.js to treat Firebase and its dependencies as external packages
-  serverExternalPackages: ["firebase-admin", "jwks-rsa", "jose"],
+  // 👇 ADDED MONGOOSE HERE
+  serverExternalPackages: ["firebase-admin", "mongoose", "jwks-rsa", "jose"],
   
   turbopack: {
     rules: {
@@ -17,7 +17,6 @@ const nextConfig: NextConfig = {
     },
   },
 
-  // ADD THIS BLOCK: Fixes the Firebase popup COOP issue
   async headers() {
     return [
       {
@@ -51,6 +50,21 @@ export default nextConfig;
 //         as: "*.css",
 //       },
 //     },
+//   },
+
+//   // ADD THIS BLOCK: Fixes the Firebase popup COOP issue
+//   async headers() {
+//     return [
+//       {
+//         source: "/(.*)",
+//         headers: [
+//           {
+//             key: "Cross-Origin-Opener-Policy",
+//             value: "same-origin-allow-popups",
+//           },
+//         ],
+//       },
+//     ];
 //   },
 // };
 

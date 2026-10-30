@@ -22,13 +22,6 @@ export default async function DashboardLayout({ children }: { children: React.Re
       <WatermarkBackground />
 
       <div className="fixed top-6 right-6 z-50 flex items-center gap-4">
-        {/* <div className="hidden md:flex flex-col items-end">
-          <span className="text-xs font-bold text-lime-600 dark:text-lime-400 bg-lime-500/10 px-2 py-0.5 rounded-md border border-lime-500/20">
-            Tier {session.tier || 0}
-          </span>
-        </div> */}
-        
-        {/* 👇 REMOVED onUserClick={() => {}} TO FIX THE ERROR 👇 */}
         <HeaderActions hideNotifications={true} />
       </div>
 

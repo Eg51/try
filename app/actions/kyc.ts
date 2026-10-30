@@ -14,18 +14,38 @@ export async function submitKyc(tier: 1 | 2 | 3, formData: any) {
   await connectDB();
 
   try {
-    await KycSubmission.create({
-      userId: session.id,
-      status: 'pending',
-      tierRequested: tier, 
-      documents: {
-        idType: formData.idType || "N/A",
-        idNumber: formData.idNumber || "N/A",
-        proofOfAddressUrl: formData.proofOfAddressUrl || "",
-        sourceOfWealthUrl: formData.sourceOfWealthUrl || "",
-        selfieLivenessUrl: formData.selfieLivenessUrl || "",
-      }
-    });
+    // 👇 OVERWRITE PREVIOUS SUBMISSION IF IT EXISTS
+    await KycSubmission.findOneAndUpdate(
+      { userId: session.id },
+      {
+        $set: {
+          status: 'pending', 
+          tierRequested: tier,
+          personalDetails: {
+            legalName: formData.legalName,
+            dob: formData.dob,
+            phone: formData.phone,
+            email: formData.email,
+            street: formData.street,
+            city: formData.city,
+            state: formData.state,
+            country: formData.country,
+          },
+          documents: {
+            idType: formData.idType || "N/A",
+            idNumber: formData.idNumber || "",
+            proofOfAddressUrl: formData.proofOfAddressUrl || "",
+            sourceOfWealthUrl: formData.sourceOfWealthUrl || "",
+            selfieLivenessUrl: formData.selfieLivenessUrl || "",
+            idDocumentUrl: formData.idDocumentUrl || "", 
+          },
+          submittedAt: new Date(), 
+          reviewedAt: null,
+          rejectionReason: null,
+        }
+      },
+      { upsert: true, new: true } // 👈 Creates if new, Updates if exists
+    );
 
     await User.findByIdAndUpdate(session.id, { kycTier: tier });
     
@@ -39,7 +59,6 @@ export async function submitKyc(tier: 1 | 2 | 3, formData: any) {
   }
 }
 
-// 👇 ENSURE THIS FUNCTION IS EXPORTED 👇
 export async function deleteKyc() {
   const session = await getServerSession();
   if (!session) return { error: "Unauthorized" };
@@ -47,10 +66,7 @@ export async function deleteKyc() {
   await connectDB();
 
   try {
-    // Delete all submissions for this user
     await KycSubmission.deleteMany({ userId: session.id });
-    
-    // Reset their tier to 0
     await User.findByIdAndUpdate(session.id, { kycTier: 0 });
 
     revalidatePath("/dashboard");
@@ -60,6 +76,6 @@ export async function deleteKyc() {
     return { success: true };
   } catch (error) {
     console.error(error);
-    return { error: "Failed to delete KYC data." };
+    return { error: "Failed to delete" };
   }
 }

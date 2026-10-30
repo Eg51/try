@@ -2,10 +2,53 @@
 /* THIS LINE IS CRITICAL FOR TAILWIND V4 DARK MODE */
 @custom-variant dark (&:where(.dark, .dark *));
 
+
+/* 👇 React Day Picker Custom Overrides to match Quantix Design System 👇 */
+.rdp {
+  --rdp-cell-size: 40px;
+  --rdp-accent-color: #84cc16; /* lime-500 */
+  --rdp-background-color: #84cc16;
+  margin: 0;
+}
+
+/* Force the calendar text to be dark/light mode aware */
+.rdp-day {
+  border-radius: 8px;
+  color: #052e16; /* lime-950 */
+  font-weight: 500;
+}
+.dark .rdp-day {
+  color: #ecfdf5; /* lime-50 */
+}
+
+/* Highlight today's date */
+.rdp-day_today {
+  color: #84cc16;
+  font-weight: 800;
+  background-color: rgba(132, 204, 22, 0.1);
+}
+
+/* Selected Date */
+.rdp-day_selected {
+  background-color: #84cc16 !important;
+  color: white !important;
+  font-weight: bold;
+  box-shadow: 0 4px 12px rgba(132, 204, 22, 0.3);
+}
+
+/* Navigation arrows */
+.rdp-nav_button {
+  color: #65a30d; /* lime-600 */
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+.rdp-nav_button:hover {
+  background-color: rgba(132, 204, 22, 0.1);
+}
 @theme {
-  /* Typography */
-  --font-sans: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
+  /* 👇 Typography: Changed to use the actual font names */
+  --font-sans: "Poppins", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
 
   /* Brand Colors - Champagne Gold (Used in Dashboard) */
   --color-brand-50: #fdfaf2;
@@ -35,6 +78,7 @@
     @apply antialiased selection:bg-lime-500/30;
   }
 }
+
 /* Add this to the bottom of globals.css */
 @keyframes marquee-scroll-left {
   0% { transform: translateX(0%); }
@@ -52,4 +96,24 @@
 
 .animate-marquee-right {
   animation: marquee-scroll-right linear infinite;
+}
+select {
+  color-scheme: light;
+}
+
+.dark select {
+  color-scheme: dark; /* Forces the OS to render a dark dropdown instead of white */
+}
+
+/* Styles the individual options in the list */
+select option {
+  background-color: #f4fbf5; /* Your light mode bg */
+  color: #052e16; /* lime-950 */
+  padding: 8px;
+  font-weight: 500;
+}
+
+.dark select option {
+  background-color: #0a0f0b; /* Your dark mode bg */
+  color: #ecfdf5; /* lime-50 */
 }
