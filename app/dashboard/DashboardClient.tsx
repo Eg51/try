@@ -12,8 +12,8 @@ import {
 import { KycGate } from "@/components/KycGate";
 import { useDevModal } from "@/components/providers/DevModalProvider";
 import { Button } from "@/components/ui/Button";
+import UserAvatar from "@/app/dashboard/UserAvatar"; // 👈 Imported UserAvatar
 
-// Using your exact mock data for the markets!
 const MARKETS = [
   { symbol: 'BTC/USD', name: 'Bitcoin', price: '$64,230.00', change: '+2.4%', up: true, icon: "₿" },
   { symbol: 'ETH/USD', name: 'Ethereum', price: '$3,450.00', change: '-1.2%', up: false, icon: "Ξ" },
@@ -34,7 +34,16 @@ const NEWS = [
   { time: "3h ago", title: "Global commodity prices stabilize after recent surge", source: "Financial Times" },
 ];
 
-export default function DashboardClient({ tier, displayName }: { tier: number, displayName: string }) {
+// 👇 Added userAvatar to the props type
+export default function DashboardClient({ 
+  tier, 
+  displayName, 
+  userAvatar 
+}: { 
+  tier: number, 
+  displayName: string, 
+  userAvatar: string 
+}) {
   const { openModal } = useDevModal();
   const [mounted, setMounted] = useState(false);
   const [tradeType, setTradeType] = useState<"buy" | "sell">("buy");
@@ -49,10 +58,20 @@ export default function DashboardClient({ tier, displayName }: { tier: number, d
       
       {/* 1. HEADER & QUICK ACTIONS */}
       <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-extrabold text-lime-950 dark:text-white tracking-tight">Welcome back, {displayName}</h1>
-          <p className="text-sm text-lime-800/60 dark:text-lime-200/50 font-medium">Here is your portfolio summary.</p>
+        
+        {/* 👇 AVATAR & WELCOME TEXT 👇 */}
+        <div className="flex items-center gap-4">
+          <UserAvatar initialImage={userAvatar} userName={displayName} />
+          <div>
+            <h1 className="text-2xl font-extrabold text-lime-950 dark:text-white tracking-tight">
+              Welcome back, {displayName}
+            </h1>
+            <p className="text-sm text-lime-800/60 dark:text-lime-200/50 font-medium">
+              Here is your portfolio summary.
+            </p>
+          </div>
         </div>
+
         <div className="flex items-center gap-3 w-full sm:w-auto">
           <button onClick={() => openModal("Deposit", "Deposit features are coming soon.", "info")} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-lime-600 text-white rounded-xl text-sm font-bold hover:bg-lime-700 transition-colors shadow-lg shadow-lime-600/20">
             <ArrowDownRight size={16} /> Deposit
@@ -68,7 +87,7 @@ export default function DashboardClient({ tier, displayName }: { tier: number, d
         {/* LEFT COLUMN (2/3 width on desktop) */}
         <div className="lg:col-span-2 space-y-6">
           
-          {/* 2. PORTFOLIO BALANCE CARD (Using your exact design) */}
+          {/* 2. PORTFOLIO BALANCE CARD */}
           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-[#f4fbf5]/90 dark:bg-[#0a0f0b]/90 backdrop-blur-2xl border border-lime-500/20 rounded-3xl p-6 sm:p-8 shadow-[0_8px_32px_0_rgba(132,204,22,0.15)] relative overflow-hidden">
             <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-lime-400/20 blur-3xl rounded-full pointer-events-none"></div>
             
@@ -242,7 +261,6 @@ export default function DashboardClient({ tier, displayName }: { tier: number, d
               </div>
             </div>
 
-            {/* 👇 KYC GATE: Now uses the ACTUAL tier passed from the server 👇 */}
             <KycGate requiredTier={1} currentTier={tier} featureName="trading">
               <Button className={`w-full h-11 font-bold text-white rounded-xl shadow-lg transition-all ${tradeType === 'buy' ? 'bg-green-600 hover:bg-green-700 shadow-green-600/20' : 'bg-red-600 hover:bg-red-700 shadow-red-600/20'}`}>
                 Execute {tradeType === 'buy' ? 'Buy' : 'Sell'} Order
@@ -250,7 +268,7 @@ export default function DashboardClient({ tier, displayName }: { tier: number, d
             </KycGate>
           </motion.div>
 
-          {/* 7. MARKET WATCH (Using your exact cards!) */}
+          {/* 7. MARKET WATCH */}
           <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }} className="bg-[#f4fbf5]/90 dark:bg-[#0a0f0b]/90 backdrop-blur-xl border border-lime-500/20 rounded-3xl shadow-xl overflow-hidden">
             <div className="p-4 border-b border-lime-500/10 flex justify-between items-center bg-white/50 dark:bg-[#121A14]/50">
               <h3 className="font-bold text-lime-950 dark:text-white flex items-center gap-2">
