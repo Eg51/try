@@ -1,5 +1,7 @@
 // app/layout.tsx
 import type { Metadata } from "next";
+import { NextIntlClientProvider } from 'next-intl';
+import { getLocale, getMessages } from 'next-intl/server'; // 👈 Imported getMessages
 import "./globals.css";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { DevModalProvider } from "@/components/providers/DevModalProvider";
@@ -14,9 +16,13 @@ export const metadata: Metadata = {
   description: "Modern trading platform for commodities and crypto.",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // 👇 Fetch the locale and messages on the server
+  const locale = await getLocale();
+  const messages = await getMessages(); // 👈 Fetch messages
+
   return (
-    <html lang="en" suppressHydrationWarning className="h-full antialiased">
+    <html lang={locale} suppressHydrationWarning className="h-full antialiased">
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
@@ -33,30 +39,34 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           disableTransitionOnChange
           storageKey="theme"
         >
-          <ToastProvider>
-            <DevModalProvider>
-              <TourProvider>
-                {children}
-                <CommandPalette />
-                <TourGuide />
-                <ClientThemeColorSync />
-              </TourProvider>
-            </DevModalProvider>
-          </ToastProvider>
+          {/* 👇 Pass locale and messages to prevent hydration flashes */}
+          <NextIntlClientProvider locale={locale} messages={messages}>
+            <ToastProvider>
+              <DevModalProvider>
+                <TourProvider>
+                  {children}
+                  <CommandPalette />
+                  <TourGuide />
+                  <ClientThemeColorSync />
+                </TourProvider>
+              </DevModalProvider>
+            </ToastProvider>
+          </NextIntlClientProvider>
         </ThemeProvider>
       </body>
     </html>
   );
 }
+
 // // app/layout.tsx
 // import type { Metadata } from "next";
-// import { cookies } from "next/headers";
+// import { NextIntlClientProvider } from 'next-intl'; // 👈 Imported
+// import { getLocale } from 'next-intl/server'; // 👈 Imported
 // import "./globals.css";
 // import { ThemeProvider } from "@/components/providers/ThemeProvider";
 // import { DevModalProvider } from "@/components/providers/DevModalProvider";
 // import { ToastProvider } from "@/components/providers/ToastProvider";
 // import { TourProvider } from "@/components/providers/TourProvider";
-// import { KycProvider } from "@/components/providers/KycProvider";
 // import { ClientThemeColorSync } from "@/components/providers/ClientThemeColorSync";
 // import { CommandPalette } from "@/components/ui/CommandPalette";
 // import TourGuide from "@/components/ui/TourGuide";
@@ -66,23 +76,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 //   description: "Modern trading platform for commodities and crypto.",
 // };
 
-// type Tier = 0 | 1 | 2 | 3;
-
 // export default async function RootLayout({ children }: { children: React.ReactNode }) {
-//   const cookieStore = await cookies();
-
-//   const themeCookie = cookieStore.get("theme")?.value;
-//   const defaultTheme =
-//     themeCookie === "light" || themeCookie === "dark" || themeCookie === "system"
-//       ? themeCookie
-//       : "system";
-
-//   const rawTier = Number(cookieStore.get("user_tier")?.value ?? 0);
-//   const initialTier: Tier = (rawTier >= 0 && rawTier <= 3 ? rawTier : 0) as Tier;
-//   const initialSkipped = cookieStore.get("kyc_skipped")?.value === "true";
+//   // 👇 Fetch the locale
+//   const locale = await getLocale();
 
 //   return (
-//     <html lang="en" suppressHydrationWarning className="h-full antialiased">
+//     <html lang={locale} suppressHydrationWarning className="h-full antialiased">
 //       <head>
 //         <link rel="preconnect" href="https://fonts.googleapis.com" />
 //         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
@@ -94,23 +93,24 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 //       <body className="min-h-full flex flex-col font-sans bg-[#f0fdf4] dark:bg-[#050806] text-lime-950 dark:text-white transition-colors duration-300">
 //         <ThemeProvider
 //           attribute="class"
-//           defaultTheme={defaultTheme}
+//           defaultTheme="system"
 //           enableSystem
 //           disableTransitionOnChange
 //           storageKey="theme"
 //         >
-//           <ToastProvider>
-//             <DevModalProvider>
-//               <TourProvider>
-//                 <KycProvider initialTier={initialTier} initialSkipped={initialSkipped}>
+//           {/* 👇 Wrapped the entire app inside the provider */}
+//           <NextIntlClientProvider>
+//             <ToastProvider>
+//               <DevModalProvider>
+//                 <TourProvider>
 //                   {children}
 //                   <CommandPalette />
 //                   <TourGuide />
 //                   <ClientThemeColorSync />
-//                 </KycProvider>
-//               </TourProvider>
-//             </DevModalProvider>
-//           </ToastProvider>
+//                 </TourProvider>
+//               </DevModalProvider>
+//             </ToastProvider>
+//           </NextIntlClientProvider>
 //         </ThemeProvider>
 //       </body>
 //     </html>
@@ -118,44 +118,21 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 // }
 // // app/layout.tsx
 // import type { Metadata } from "next";
-// import { cookies } from "next/headers";
-// import dynamic from "next/dynamic";
 // import "./globals.css";
 // import { ThemeProvider } from "@/components/providers/ThemeProvider";
 // import { DevModalProvider } from "@/components/providers/DevModalProvider";
 // import { ToastProvider } from "@/components/providers/ToastProvider";
 // import { TourProvider } from "@/components/providers/TourProvider";
-// import { KycProvider } from "@/components/providers/KycProvider";
+// import { ClientThemeColorSync } from "@/components/providers/ClientThemeColorSync";
 // import { CommandPalette } from "@/components/ui/CommandPalette";
 // import TourGuide from "@/components/ui/TourGuide";
-
-// // Client-only — touches document.head, must not run during prerender
-// const ThemeColorSync = dynamic(
-//   () => import("@/components/providers/ThemeColorSync").then((m) => m.ThemeColorSync),
-//   { ssr: false }
-// );
 
 // export const metadata: Metadata = {
 //   title: "Premium Trading",
 //   description: "Modern trading platform for commodities and crypto.",
 // };
 
-// type Tier = 0 | 1 | 2 | 3;
-
-// export default async function RootLayout({ children }: { children: React.ReactNode }) {
-//   // Read persisted state on the server so prerendering is deterministic
-//   const cookieStore = await cookies();
-
-//   const themeCookie = cookieStore.get("theme")?.value;
-//   const defaultTheme =
-//     themeCookie === "light" || themeCookie === "dark" || themeCookie === "system"
-//       ? themeCookie
-//       : "system";
-
-//   const rawTier = Number(cookieStore.get("user_tier")?.value ?? 0);
-//   const initialTier: Tier = (rawTier >= 0 && rawTier <= 3 ? rawTier : 0) as Tier;
-//   const initialSkipped = cookieStore.get("kyc_skipped")?.value === "true";
-
+// export default function RootLayout({ children }: { children: React.ReactNode }) {
 //   return (
 //     <html lang="en" suppressHydrationWarning className="h-full antialiased">
 //       <head>
@@ -169,7 +146,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 //       <body className="min-h-full flex flex-col font-sans bg-[#f0fdf4] dark:bg-[#050806] text-lime-950 dark:text-white transition-colors duration-300">
 //         <ThemeProvider
 //           attribute="class"
-//           defaultTheme={defaultTheme}
+//           defaultTheme="system"
 //           enableSystem
 //           disableTransitionOnChange
 //           storageKey="theme"
@@ -177,12 +154,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 //           <ToastProvider>
 //             <DevModalProvider>
 //               <TourProvider>
-//                 <KycProvider initialTier={initialTier} initialSkipped={initialSkipped}>
-//                   {children}
-//                   <CommandPalette />
-//                   <TourGuide />
-//                   <ThemeColorSync />
-//                 </KycProvider>
+//                 {children}
+//                 <CommandPalette />
+//                 <TourGuide />
+//                 <ClientThemeColorSync />
 //               </TourProvider>
 //             </DevModalProvider>
 //           </ToastProvider>

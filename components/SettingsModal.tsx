@@ -1,35 +1,4 @@
-
-// "use client";
-
-// import { useTheme } from "next-themes";
-// import { motion, AnimatePresence } from "framer-motion";
-// import { 
-//   X, Palette, DollarSign, Globe, Bell, Shield, Monitor, Moon, Sun, 
-//   Check, TrendingUp, UserX, Loader2, CheckCircle2, XCircle
-// } from "lucide-react";
-// import { useEffect, useState } from "react";
-// import { createPortal } from "react-dom"; // 👈 IMPORT PORTAL
-// import { deleteKyc } from "@/app/actions/kyc";
-// import { updateUserSettingsAction } from "@/app/actions/user";
-
-// const CURRENCIES = [
-//   { code: "USD", symbol: "$", name: "US Dollar" },
-//   { code: "EUR", symbol: "€", name: "Euro" },
-//   { code: "GBP", symbol: "£", name: "British Pound" },
-//   { code: "JPY", symbol: "¥", name: "Japanese Yen" },
-//   { code: "NGN", symbol: "₦", name: "Nigerian Naira" },
-// ];
-
-// const LANGUAGES = [
-//   "English (US)", "English (UK)", "Español (ES)", "Français (FR)", "Deutsch (DE)", 
-//   "中文 (ZH)", "日本語 (JA)", "한국어 (KO)", "Русский (RU)", "العربية (AR)", 
-//   "Português (PT)", "Italiano (IT)", "Türkçe (TR)", "हिन्दी (HI)", "Yoruba (YO)",
-//   "Igbo (IG)", "Hausa (HA)", "Swahili (SW)", "Nederlands (NL)", "Polski (PL)"
-// ];
-
-// interface SettingsModalProps {
-//   isOpen: boolean;
-//   onClose: () => void;// components/SettingsModal.tsx
+// components/SettingsModal.tsx
 "use client";
 
 import { useTheme } from "next-themes";
@@ -42,7 +11,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { deleteKyc } from "@/app/actions/kyc";
 import { updateUserSettingsAction } from "@/app/actions/user";
-import { useTour } from "@/components/providers/TourProvider"; // 👈 Imported Tour Hook
+import { useTour } from "@/components/providers/TourProvider";
 
 const CURRENCIES = [
   { code: "USD", symbol: "$", name: "US Dollar" },
@@ -93,11 +62,10 @@ export default function SettingsModal({
   const [oneClickTrade, setOneClickTrade] = useState(false);
   const [defaultOrderSize, setDefaultOrderSize] = useState("100");
 
-  const { setSteps } = useTour(); // 👈 Get setSteps from TourProvider
+  const { setSteps } = useTour();
 
   useEffect(() => setMounted(true), []);
 
-  // 👇 1. CONFIGURE TOUR STEPS (Only when modal is open)
   useEffect(() => {
     if (isOpen) {
       setSteps([
@@ -110,15 +78,42 @@ export default function SettingsModal({
         { id: "tour-settings-save", title: "Save Settings", text: "Click here to apply all your changes across the entire platform." },
       ]);
     } else {
-      // Clear steps when modal closes to prevent conflicts with page tours
       setSteps([]);
     }
   }, [isOpen, setSteps]);
 
   if (!mounted) return null;
 
+  // 👇 Helper to map language string to code
+  const getLocaleCode = (lang: string) => {
+    if (lang.includes("ES") || lang.includes("Español")) return "es";
+    if (lang.includes("FR") || lang.includes("Français")) return "fr";
+    if (lang.includes("DE") || lang.includes("Deutsch")) return "de";
+    if (lang.includes("ZH") || lang.includes("中文")) return "zh";
+    if (lang.includes("JA") || lang.includes("日本語")) return "ja";
+    if (lang.includes("KO") || lang.includes("한국어")) return "ko";
+    if (lang.includes("RU") || lang.includes("Русский")) return "ru";
+    if (lang.includes("AR") || lang.includes("العربية")) return "ar";
+    if (lang.includes("PT") || lang.includes("Português")) return "pt";
+    if (lang.includes("IT") || lang.includes("Italiano")) return "it";
+    if (lang.includes("TR") || lang.includes("Türkçe")) return "tr";
+    if (lang.includes("HI") || lang.includes("हिन्दी")) return "hi";
+    if (lang.includes("YO") || lang.includes("Yoruba")) return "yo";
+    if (lang.includes("IG") || lang.includes("Igbo")) return "ig";
+    if (lang.includes("HA") || lang.includes("Hausa")) return "ha";
+    if (lang.includes("SW") || lang.includes("Swahili")) return "sw";
+    if (lang.includes("NL") || lang.includes("Nederlands")) return "nl";
+    if (lang.includes("PL") || lang.includes("Polski")) return "pl";
+    return "en"; // Default
+  };
+
   const handleSave = async () => {
     setIsSaving(true);
+    
+    // 👇 Write the locale cookie so next-intl picks it up
+    const localeCode = getLocaleCode(language);
+    document.cookie = `locale=${localeCode}; path=/; max-age=31536000; SameSite=Lax`;
+
     const res = await updateUserSettingsAction({ currency, language });
     setIsSaving(false);
 
@@ -198,7 +193,6 @@ export default function SettingsModal({
             transition={{ type: "spring", stiffness: 300, damping: 25 }}
             className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[9999] w-[95%] max-w-3xl max-h-[90vh] flex flex-col bg-[#f4fbf5]/95 dark:bg-[#0a0f0b]/95 backdrop-blur-2xl border border-lime-500/30 dark:border-lime-500/10 rounded-3xl shadow-[0_8px_32px_0_rgba(132,204,22,0.15)] dark:shadow-[0_8px_32px_0_rgba(0,0,0,0.5)] overflow-hidden"
           >
-            {/* Header */}
             <div className="flex items-center justify-between p-6 border-b border-lime-500/20 bg-white/50 dark:bg-[#0a0f0b]/50 backdrop-blur-md shrink-0">
               <div>
                 <h2 className="text-2xl font-extrabold text-lime-950 dark:text-white">Configure experience</h2>
@@ -209,12 +203,9 @@ export default function SettingsModal({
               </button>
             </div>
 
-            {/* Scrollable Content */}
             <div className="p-6 overflow-y-auto space-y-6 flex-1 scrollbar-thumb-lime-400 custom-scrollbar">
-              
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 
-                {/* 1. Appearance */}
                 <div id="tour-settings-appearance" className="group p-5 rounded-2xl border border-lime-500/20 bg-white/50 dark:bg-[#121A14]/50 hover:border-lime-500/50 transition-all">
                   <div className="flex items-center gap-3 mb-4">
                     <div className="p-2 bg-lime-500/20 rounded-xl text-lime-600 dark:text-lime-400 group-hover:scale-110 transition-transform">
@@ -238,7 +229,6 @@ export default function SettingsModal({
                   </div>
                 </div>
 
-                {/* 2. Display Currency */}
                 <div id="tour-settings-currency" className="group p-5 rounded-2xl border border-lime-500/20 bg-white/50 dark:bg-[#121A14]/50 hover:border-lime-500/50 transition-all flex flex-col justify-between">
                   <div>
                     <div className="flex items-center gap-3 mb-4">
@@ -279,7 +269,6 @@ export default function SettingsModal({
                   </button>
                 </div>
 
-                {/* 3. Language */}
                 <div id="tour-settings-language" className="group p-5 rounded-2xl border border-lime-500/20 bg-white/50 dark:bg-[#121A14]/50 hover:border-lime-500/50 transition-all">
                   <div className="flex items-center gap-3 mb-4">
                     <div className="p-2 bg-lime-500/20 rounded-xl text-lime-600 dark:text-lime-400 group-hover:scale-110 transition-transform">
@@ -297,7 +286,6 @@ export default function SettingsModal({
                   </select>
                 </div>
 
-                {/* 4. Trading Preferences */}
                 <div id="tour-settings-trading" className="group p-5 rounded-2xl border border-lime-500/20 bg-white/50 dark:bg-[#121A14]/50 hover:border-lime-500/50 transition-all">
                   <div className="flex items-center gap-3 mb-2">
                     <div className="p-2 bg-lime-500/20 rounded-xl text-lime-600 dark:text-lime-400 group-hover:scale-110 transition-transform">
@@ -319,7 +307,6 @@ export default function SettingsModal({
                 </div>
               </div>
 
-              {/* Notifications Section */}
               <div id="tour-settings-notifications" className="group p-5 rounded-2xl border border-lime-500/20 bg-white/50 dark:bg-[#121A14]/50 hover:border-lime-500/50 transition-all">
                 <div className="flex items-center gap-3 mb-2">
                   <div className="p-2 bg-lime-500/20 rounded-xl text-lime-600 dark:text-lime-400 group-hover:scale-110 transition-transform">
@@ -339,7 +326,6 @@ export default function SettingsModal({
                 </div>
               </div>
 
-              {/* Security & KYC Section */}
               <div id="tour-settings-security" className="group p-5 rounded-2xl border border-red-500/20 bg-red-500/5 transition-all">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                   <div className="flex items-center gap-3">
@@ -369,13 +355,11 @@ export default function SettingsModal({
                   </div>
                 </div>
               </div>
-
             </div>
 
-            {/* Global Sticky Footer (Save All) */}
             <div className="p-4 border-t border-lime-500/20 bg-white/80 dark:bg-[#0a0f0b]/80 justify-center items-center shrink-0 backdrop-blur-md flex">
               <button 
-                id="tour-settings-save" // 👈 Added Tour ID
+                id="tour-settings-save"
                 onClick={handleSave} 
                 disabled={isSaving}
                 className="px-8 py-3 rounded-xl bg-lime-600 text-white font-bold hover:bg-lime-700 transition-all shadow-lg shadow-lime-600/20 flex items-center gap-2"
@@ -385,7 +369,6 @@ export default function SettingsModal({
               </button>
             </div>
 
-            {/* INLINE SUCCESS / ERROR NOTIFICATION MODAL */}
             <AnimatePresence>
               {notification && (
                 <motion.div 
@@ -435,6 +418,69 @@ export default function SettingsModal({
     document.body
   );
 }
+// // "use client";
+
+// // import { useTheme } from "next-themes";
+// // import { motion, AnimatePresence } from "framer-motion";
+// // import { 
+// //   X, Palette, DollarSign, Globe, Bell, Shield, Monitor, Moon, Sun, 
+// //   Check, TrendingUp, UserX, Loader2, CheckCircle2, XCircle
+// // } from "lucide-react";
+// // import { useEffect, useState } from "react";
+// // import { createPortal } from "react-dom"; // 👈 IMPORT PORTAL
+// // import { deleteKyc } from "@/app/actions/kyc";
+// // import { updateUserSettingsAction } from "@/app/actions/user";
+
+// // const CURRENCIES = [
+// //   { code: "USD", symbol: "$", name: "US Dollar" },
+// //   { code: "EUR", symbol: "€", name: "Euro" },
+// //   { code: "GBP", symbol: "£", name: "British Pound" },
+// //   { code: "JPY", symbol: "¥", name: "Japanese Yen" },
+// //   { code: "NGN", symbol: "₦", name: "Nigerian Naira" },
+// // ];
+
+// // const LANGUAGES = [
+// //   "English (US)", "English (UK)", "Español (ES)", "Français (FR)", "Deutsch (DE)", 
+// //   "中文 (ZH)", "日本語 (JA)", "한국어 (KO)", "Русский (RU)", "العربية (AR)", 
+// //   "Português (PT)", "Italiano (IT)", "Türkçe (TR)", "हिन्दी (HI)", "Yoruba (YO)",
+// //   "Igbo (IG)", "Hausa (HA)", "Swahili (SW)", "Nederlands (NL)", "Polski (PL)"
+// // ];
+
+// // interface SettingsModalProps {
+// //   isOpen: boolean;
+// //   onClose: () => void;// components/SettingsModal.tsx
+// "use client";
+
+// import { useTheme } from "next-themes";
+// import { motion, AnimatePresence } from "framer-motion";
+// import { 
+//   X, Palette, DollarSign, Globe, Bell, Shield, Monitor, Moon, Sun, 
+//   Check, TrendingUp, UserX, Loader2, CheckCircle2, XCircle
+// } from "lucide-react";
+// import { useEffect, useState } from "react";
+// import { createPortal } from "react-dom";
+// import { deleteKyc } from "@/app/actions/kyc";
+// import { updateUserSettingsAction } from "@/app/actions/user";
+// import { useTour } from "@/components/providers/TourProvider"; // 👈 Imported Tour Hook
+
+// const CURRENCIES = [
+//   { code: "USD", symbol: "$", name: "US Dollar" },
+//   { code: "EUR", symbol: "€", name: "Euro" },
+//   { code: "GBP", symbol: "£", name: "British Pound" },
+//   { code: "JPY", symbol: "¥", name: "Japanese Yen" },
+//   { code: "NGN", symbol: "₦", name: "Nigerian Naira" },
+// ];
+
+// const LANGUAGES = [
+//   "English (US)", "English (UK)", "Español (ES)", "Français (FR)", "Deutsch (DE)", 
+//   "中文 (ZH)", "日本語 (JA)", "한국어 (KO)", "Русский (RU)", "العربية (AR)", 
+//   "Português (PT)", "Italiano (IT)", "Türkçe (TR)", "हिन्दी (HI)", "Yoruba (YO)",
+//   "Igbo (IG)", "Hausa (HA)", "Swahili (SW)", "Nederlands (NL)", "Polski (PL)"
+// ];
+
+// interface SettingsModalProps {
+//   isOpen: boolean;
+//   onClose: () => void;
 //   initialCurrency?: string;
 //   initialLanguage?: string;
 // }
@@ -466,7 +512,28 @@ export default function SettingsModal({
 //   const [oneClickTrade, setOneClickTrade] = useState(false);
 //   const [defaultOrderSize, setDefaultOrderSize] = useState("100");
 
+//   const { setSteps } = useTour(); // 👈 Get setSteps from TourProvider
+
 //   useEffect(() => setMounted(true), []);
+
+//   // 👇 1. CONFIGURE TOUR STEPS (Only when modal is open)
+//   useEffect(() => {
+//     if (isOpen) {
+//       setSteps([
+//         { id: "tour-settings-appearance", title: "Appearance", text: "Switch between Light, Dark, or System theme modes here." },
+//         { id: "tour-settings-currency", title: "Display Currency", text: "Choose your preferred fiat currency for balances and charts." },
+//         { id: "tour-settings-language", title: "Language", text: "Select your native language for the interface." },
+//         { id: "tour-settings-trading", title: "Trading Preferences", text: "Enable one-click trading or set a default order size." },
+//         { id: "tour-settings-notifications", title: "Notifications", text: "Manage what alerts and updates you receive." },
+//         { id: "tour-settings-security", title: "KYC & Security", text: "Manage your identity verification data here." },
+//         { id: "tour-settings-save", title: "Save Settings", text: "Click here to apply all your changes across the entire platform." },
+//       ]);
+//     } else {
+//       // Clear steps when modal closes to prevent conflicts with page tours
+//       setSteps([]);
+//     }
+//   }, [isOpen, setSteps]);
+
 //   if (!mounted) return null;
 
 //   const handleSave = async () => {
@@ -533,7 +600,6 @@ export default function SettingsModal({
 //     </div>
 //   );
 
-//   // 👇 WRAP THE ENTIRE RETURN IN A PORTAL
 //   return createPortal(
 //     <AnimatePresence>
 //       {isOpen && (
@@ -568,7 +634,7 @@ export default function SettingsModal({
 //               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 
 //                 {/* 1. Appearance */}
-//                 <div className="group p-5 rounded-2xl border border-lime-500/20 bg-white/50 dark:bg-[#121A14]/50 hover:border-lime-500/50 transition-all">
+//                 <div id="tour-settings-appearance" className="group p-5 rounded-2xl border border-lime-500/20 bg-white/50 dark:bg-[#121A14]/50 hover:border-lime-500/50 transition-all">
 //                   <div className="flex items-center gap-3 mb-4">
 //                     <div className="p-2 bg-lime-500/20 rounded-xl text-lime-600 dark:text-lime-400 group-hover:scale-110 transition-transform">
 //                       <Palette size={20} />
@@ -592,7 +658,7 @@ export default function SettingsModal({
 //                 </div>
 
 //                 {/* 2. Display Currency */}
-//                 <div className="group p-5 rounded-2xl border border-lime-500/20 bg-white/50 dark:bg-[#121A14]/50 hover:border-lime-500/50 transition-all flex flex-col justify-between">
+//                 <div id="tour-settings-currency" className="group p-5 rounded-2xl border border-lime-500/20 bg-white/50 dark:bg-[#121A14]/50 hover:border-lime-500/50 transition-all flex flex-col justify-between">
 //                   <div>
 //                     <div className="flex items-center gap-3 mb-4">
 //                       <div className="p-2 bg-lime-500/20 rounded-xl text-lime-600 dark:text-lime-400 group-hover:scale-110 transition-transform">
@@ -633,7 +699,7 @@ export default function SettingsModal({
 //                 </div>
 
 //                 {/* 3. Language */}
-//                 <div className="group p-5 rounded-2xl border border-lime-500/20 bg-white/50 dark:bg-[#121A14]/50 hover:border-lime-500/50 transition-all">
+//                 <div id="tour-settings-language" className="group p-5 rounded-2xl border border-lime-500/20 bg-white/50 dark:bg-[#121A14]/50 hover:border-lime-500/50 transition-all">
 //                   <div className="flex items-center gap-3 mb-4">
 //                     <div className="p-2 bg-lime-500/20 rounded-xl text-lime-600 dark:text-lime-400 group-hover:scale-110 transition-transform">
 //                       <Globe size={20} />
@@ -651,7 +717,7 @@ export default function SettingsModal({
 //                 </div>
 
 //                 {/* 4. Trading Preferences */}
-//                 <div className="group p-5 rounded-2xl border border-lime-500/20 bg-white/50 dark:bg-[#121A14]/50 hover:border-lime-500/50 transition-all">
+//                 <div id="tour-settings-trading" className="group p-5 rounded-2xl border border-lime-500/20 bg-white/50 dark:bg-[#121A14]/50 hover:border-lime-500/50 transition-all">
 //                   <div className="flex items-center gap-3 mb-2">
 //                     <div className="p-2 bg-lime-500/20 rounded-xl text-lime-600 dark:text-lime-400 group-hover:scale-110 transition-transform">
 //                       <TrendingUp size={20} />
@@ -673,7 +739,7 @@ export default function SettingsModal({
 //               </div>
 
 //               {/* Notifications Section */}
-//               <div className="group p-5 rounded-2xl border border-lime-500/20 bg-white/50 dark:bg-[#121A14]/50 hover:border-lime-500/50 transition-all">
+//               <div id="tour-settings-notifications" className="group p-5 rounded-2xl border border-lime-500/20 bg-white/50 dark:bg-[#121A14]/50 hover:border-lime-500/50 transition-all">
 //                 <div className="flex items-center gap-3 mb-2">
 //                   <div className="p-2 bg-lime-500/20 rounded-xl text-lime-600 dark:text-lime-400 group-hover:scale-110 transition-transform">
 //                     <Bell size={20} />
@@ -693,7 +759,7 @@ export default function SettingsModal({
 //               </div>
 
 //               {/* Security & KYC Section */}
-//               <div className="group p-5 rounded-2xl border border-red-500/20 bg-red-500/5 transition-all">
+//               <div id="tour-settings-security" className="group p-5 rounded-2xl border border-red-500/20 bg-red-500/5 transition-all">
 //                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
 //                   <div className="flex items-center gap-3">
 //                     <div className="p-2 bg-red-500/20 rounded-xl text-red-500">
@@ -728,6 +794,7 @@ export default function SettingsModal({
 //             {/* Global Sticky Footer (Save All) */}
 //             <div className="p-4 border-t border-lime-500/20 bg-white/80 dark:bg-[#0a0f0b]/80 justify-center items-center shrink-0 backdrop-blur-md flex">
 //               <button 
+//                 id="tour-settings-save" // 👈 Added Tour ID
 //                 onClick={handleSave} 
 //                 disabled={isSaving}
 //                 className="px-8 py-3 rounded-xl bg-lime-600 text-white font-bold hover:bg-lime-700 transition-all shadow-lg shadow-lime-600/20 flex items-center gap-2"

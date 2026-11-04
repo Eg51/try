@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Crosshair, PenTool, Minus, Trash2, ChevronDown, Search, ArrowUpRight,
@@ -64,13 +64,17 @@ export default function TradingTerminal({
   dbAssets?: any[],
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { setSteps } = useTour();
+
+  const pairParam = searchParams.get("pair");
+  const tradeIdParam = searchParams.get("tradeId");
 
   const [isMarketOpen, setIsMarketOpen] = useState(false);
   const [timeframe, setTimeframe] = useState("1h");
 
-  const [baseAsset, setBaseAsset] = useState(coin?.symbol?.toUpperCase() || "CHR");
-  const [quoteAsset, setQuoteAsset] = useState(quoteAssetSymbol || "USD");
+  const [baseAsset, setBaseAsset] = useState(pairParam?.split("-")[0] || coin?.symbol?.toUpperCase() || "CHR");
+  const [quoteAsset, setQuoteAsset] = useState(pairParam?.split("-")[1] || quoteAssetSymbol || "USD");
 
   const [isSelectingPair, setIsSelectingPair] = useState(false);
   const [selectionStep, setSelectionStep] = useState<"base" | "quote">("base");
@@ -88,7 +92,7 @@ export default function TradingTerminal({
 
   const [drawings, setDrawings] = useState<any[]>([]);
   const [selectedDrawingIds, setSelectedDrawingIds] = useState<string[]>([]);
-  const [activeTradeId, setActiveTradeId] = useState<string | null>(null);
+  const [activeTradeId, setActiveTradeId] = useState<string | null>(tradeIdParam);
 
   const [mousePos, setMousePos] = useState<{ x: number, y: number, price: number, time: number } | null>(null);
   const [pinnedInfo, setPinnedInfo] = useState<{ x: number, y: number, price: number, time: number } | null>(null);
@@ -102,7 +106,19 @@ export default function TradingTerminal({
 
   const activePairId = `${baseAsset}-${quoteAsset}`;
 
-  // 👇 1. CONFIGURE TOUR STEPS
+  // Sync URL params (e.g. navigating from Dashboard to Terminal)
+  useEffect(() => {
+    if (pairParam) {
+      const [b, q] = pairParam.split("-");
+      if (b) setBaseAsset(b);
+      if (q) setQuoteAsset(q);
+    }
+    if (tradeIdParam) {
+      setActiveTradeId(tradeIdParam);
+      setShowHistoryModal(true);
+    }
+  }, [pairParam, tradeIdParam]);
+
   useEffect(() => {
     setSteps([
       { id: "tour-terminal-header", title: "Trading Pair", text: "This shows your active trading pair. Click it to open the market selector." },
@@ -111,12 +127,9 @@ export default function TradingTerminal({
       { id: "tour-terminal-chart", title: "Live Chart", text: "This is where the price action happens. You can draw analysis and track live trends." },
       { id: "tour-terminal-history", title: "Trade History", text: "View your past trades, check PnL, and manage open positions." }
     ]);
-
-    // Clear steps when leaving the page to prevent conflicts
     return () => setSteps([]);
   }, [setSteps]);
 
-  // Market Hours Logic
   useEffect(() => {
     const checkMarket = () => {
       const now = new Date();
@@ -131,7 +144,6 @@ export default function TradingTerminal({
     return () => clearInterval(interval);
   }, []);
 
-  // Sync Drawings
   useEffect(() => {
     if (activeTradeId) {
       const trade = activeTradesList.find(t => t._id === activeTradeId || t.id === activeTradeId);
@@ -145,9 +157,16 @@ export default function TradingTerminal({
   useEffect(() => { if (coin) setBaseAsset(coin.symbol.toUpperCase()); }, [coin]);
   useEffect(() => { if (quoteAssetSymbol) setQuoteAsset(quoteAssetSymbol); }, [quoteAssetSymbol]);
 
-  // Trend Color Logic
+    // Trend Color Logic (Synced with Dashboard Sparklines)
   const getTrendColor = (data: any[]) => {
-    if (data.length < 5) return "#3b82f6";
+    // 1. Check if the active trade has closed or hit stop loss (Red)
+    if (activeTradeId) {
+      const trade = activeTradesList.find(t => t._id === activeTradeId || t.id === activeTradeId);
+      if (trade && trade.status === "closed") return "#ef4444"; 
+    }
+
+    if (data.length < 5) return "#10b981"; // Stable (Green)
+    
     const recent = data.slice(-15);
     const highs = recent.map(c => c.h);
     const lows = recent.map(c => c.l);
@@ -155,12 +174,20 @@ export default function TradingTerminal({
     const prevHigh = Math.max(...highs.slice(0, -1));
     const prevLow = Math.min(...lows.slice(0, -1));
 
-    if (currentClose < prevLow) return "#ef4444";
-    if (currentClose > prevHigh) return "#3b82f6";
-    const startMid = (recent[0].h + recent[0].l) / 2;
-    const endMid = (recent[recent.length - 1].h + recent[recent.length - 1].l) / 2;
-    if (endMid < startMid * 0.99) return "#eab308";
-    return "#3b82f6";
+    // 2. Check if falling below entry price (Red)
+    if (activeTradeId) {
+       const trade = activeTradesList.find(t => t._id === activeTradeId || t.id === activeTradeId);
+       if (trade && currentClose < (trade.entryPrice || trade.entry)) return "#ef4444"; // Closing
+    }
+
+    // 3. Increasing (Blue)
+    if (currentClose > prevHigh) return "#3b82f6"; 
+    
+    // 4. Falling (Yellow)
+    if (currentClose < prevLow) return "#eab308"; 
+    
+    // 5. Stable (Green)
+    return "#10b981"; 
   };
 
   const generateCandles = useCallback((pairId: string, tf: string) => {
@@ -216,7 +243,6 @@ export default function TradingTerminal({
 
     const parts = [];
 
-    // 1. Horizontal Grid (Price)
     for (let i = 0; i <= 5; i++) {
       const p = pMin + (pMax - pMin) * (i / 5);
       const y = yForP(p);
@@ -224,18 +250,13 @@ export default function TradingTerminal({
       parts.push(`<text x="${W - PAD_R + 10}" y="${y + 4}" fill="#888" font-size="10" font-family="monospace">${currencySymbol}${p.toFixed(p < 1 ? 6 : 2)}</text>`);
     }
 
-    // 2. Vertical Grid & Time Boundaries
     const { gridInterval, boundary } = getChartGridConfig(timeframe);
 
     visibleData.forEach((c, i) => {
       const x = xForT(c.t);
-
-      // Broken vertical lines (Grid)
       if (i % gridInterval === 0) {
         parts.push(`<line x1="${x}" y1="${PAD_T}" x2="${x}" y2="${PAD_T + plotH}" stroke="#2a2a2a" stroke-width="1" stroke-dasharray="4 4"/>`);
       }
-
-      // Solid vertical lines (Boundaries)
       if (i > 0) {
         const prevC = visibleData[i - 1];
         const d = new Date(c.t);
@@ -248,17 +269,12 @@ export default function TradingTerminal({
 
         if (isBoundary) {
           parts.push(`<line x1="${x}" y1="${PAD_T}" x2="${x}" y2="${PAD_T + plotH}" stroke="#555" stroke-width="1" />`);
-          const label = boundary === "year"
-            ? d.getFullYear().toString()
-            : boundary === "month"
-              ? d.toLocaleString('default', { month: 'short' })
-              : `${d.getDate()}/${d.getMonth() + 1}`;
+          const label = boundary === "year" ? d.getFullYear().toString() : boundary === "month" ? d.toLocaleString('default', { month: 'short' }) : `${d.getDate()}/${d.getMonth() + 1}`;
           parts.push(`<text x="${x + 2}" y="${PAD_T + plotH + 15}" fill="#666" font-size="9" font-family="monospace">${label}</text>`);
         }
       }
     });
 
-    // 3. Price Action (Line or Candles)
     const isLineMode = visibleData.length > 80 || (plotW / visibleData.length) < 4;
     const trendColor = getTrendColor(visibleData);
     const slotW = plotW / visibleData.length;
@@ -301,7 +317,6 @@ export default function TradingTerminal({
       });
     }
 
-    // 4. Drawings
     drawings.forEach(d => {
       const isSelected = selectedDrawingIds.includes(d.id);
       const stroke = isSelected ? "#3b82f6" : "#eab308";
@@ -349,7 +364,6 @@ export default function TradingTerminal({
       }
     });
 
-    // 5. Live Price
     const last = visibleData[visibleData.length - 1];
     const lastY = yForP(last.c);
     parts.push(`<line x1="${PAD_L}" y1="${lastY}" x2="${W - PAD_R}" y2="${lastY}" stroke="${trendColor}" stroke-width="1" stroke-dasharray="2 2"/>`);
@@ -425,7 +439,6 @@ export default function TradingTerminal({
         setSelectedDrawingIds([]);
         setPinnedInfo(null);
       }
-
     } else if (activeTool === "hline") {
       const newDrawing = { id: Date.now().toString(), type: "hline", start: { t: coords.t, p: coords.p }, end: { t: coords.t, p: coords.p } };
       setDrawings(prev => [...prev, newDrawing]);
@@ -499,44 +512,41 @@ export default function TradingTerminal({
   };
 
   const allAvailableAssets = React.useMemo(() => {
-    // 1. Start with the database assets
-    const baseAssets = dbAssets.map(a => ({
+    const baseAssets = dbAssets.map((a: any) => ({
       id: a.symbol,
       symbol: a.symbol,
       name: a.name,
-      color: a.color
+      color: a.color,
+      image: a.image // 👈 Added image support
     }));
 
-    // 2. Merge live CoinGecko quotes
     if (availableQuotes.length > 0) {
-      availableQuotes.forEach(q => {
-        if (!baseAssets.find(a => a.symbol === q.symbol.toUpperCase())) {
+      availableQuotes.forEach((q: any) => {
+        if (!baseAssets.find((a: any) => a.symbol === q.symbol.toUpperCase())) {
           baseAssets.push({
             id: q.id,
             symbol: q.symbol.toUpperCase(),
             name: q.name,
-            color: q.category === 'crypto' ? "#f59e0b" : q.category === 'memes' ? "#ec4899" : "#3b82f6"
+            color: q.category === 'crypto' ? "#f59e0b" : q.category === 'memes' ? "#ec4899" : "#3b82f6",
+            image: q.image // 👈 Added image support
           });
         }
       });
     }
 
-    // 3. Keep the active coin
-    if (coin) {
-      if (!baseAssets.find(a => a.symbol === coin.symbol.toUpperCase())) {
-        baseAssets.unshift({
-          id: coin.id,
-          symbol: coin.symbol.toUpperCase(),
-          name: coin.name,
-          color: "#f59e0b"
-        });
-      }
+    if (coin && !baseAssets.find((a: any) => a.symbol === coin.symbol.toUpperCase())) {
+      baseAssets.unshift({
+        id: coin.id,
+        symbol: coin.symbol.toUpperCase(),
+        name: coin.name,
+        color: "#f59e0b",
+        image: coin.image // 👈 Added image support
+      });
     }
 
     return baseAssets;
   }, [dbAssets, availableQuotes, coin]);
 
-  // 👇 These were missing (causing TS2304 / TS7006). Defined before JSX.
   const filteredAssets = allAvailableAssets.filter((asset: any) =>
     (asset.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
     (asset.symbol || "").toLowerCase().includes(searchQuery.toLowerCase())
@@ -548,8 +558,6 @@ export default function TradingTerminal({
 
   return (
     <div className="flex flex-col h-full bg-[#f4fbf5]/90 dark:bg-[#0a0f0b]/90 backdrop-blur-2xl border border-lime-500/20 dark:border-lime-500/10 rounded-3xl shadow-[0_8px_32px_0_rgba(132,204,22,0.15)] dark:shadow-[0_8px_32px_0_rgba(0,0,0,0.5)] overflow-hidden relative">
-
-      {/* HEADER */}
       <div id="tour-terminal-header" className="flex items-center justify-between p-3 border-b border-lime-500/10 bg-white/40 dark:bg-[#121A14]/60 backdrop-blur-md shrink-0">
         <button
           onClick={() => { setIsSelectingPair(true); setSelectionStep("base"); setSearchQuery(""); }}
@@ -566,9 +574,7 @@ export default function TradingTerminal({
         </div>
       </div>
 
-      {/* EXPANDED CHART AREA */}
       <div className="flex-1 flex flex-col relative overflow-hidden">
-
         <div className="flex items-center justify-between gap-2 p-2 bg-white/30 dark:bg-[#121A14]/50 border-b border-lime-500/10 backdrop-blur z-10">
           <button
             id="tour-terminal-tools"
@@ -605,7 +611,6 @@ export default function TradingTerminal({
         >
           <svg ref={svgRef} className="w-full h-full block" />
 
-          {/* CROSSHAIR TOOLTIP */}
           {pinnedInfo && (
             <div
               className="absolute z-30 bg-[#0a0f0b]/90 border border-lime-500/30 text-white text-[10px] font-mono p-2 rounded-lg shadow-xl pointer-events-none flex flex-col gap-1 backdrop-blur-md"
@@ -630,7 +635,6 @@ export default function TradingTerminal({
         </div>
       </div>
 
-      {/* BOTTOM ALLOWANCE: HISTORY TRIGGER */}
       <div className="shrink-0 p-3 bg-white/40 dark:bg-[#121A14]/60 backdrop-blur-md border-t border-lime-500/10">
         <button
           id="tour-terminal-history"
@@ -648,7 +652,6 @@ export default function TradingTerminal({
         </button>
       </div>
 
-      {/* HISTORY MODAL */}
       <AnimatePresence>
         {showHistoryModal && (
           <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 dark:bg-black/80 backdrop-blur-sm">
@@ -736,7 +739,6 @@ export default function TradingTerminal({
         )}
       </AnimatePresence>
 
-      {/* DETAILS SUB-MODAL */}
       <AnimatePresence>
         {selectedHistoryTrade && (
           <div className="fixed inset-0 z-[210] flex items-center justify-center p-4 bg-black/60 dark:bg-black/80 backdrop-blur-sm">
@@ -763,7 +765,6 @@ export default function TradingTerminal({
         )}
       </AnimatePresence>
 
-      {/* TIMEFRAME MODAL */}
       <AnimatePresence>
         {showTimeframeModal && (
           <motion.div
@@ -796,7 +797,6 @@ export default function TradingTerminal({
         )}
       </AnimatePresence>
 
-      {/* TOOLS MODAL */}
       <AnimatePresence>
         {showToolsModal && (
           <motion.div
@@ -821,7 +821,6 @@ export default function TradingTerminal({
         )}
       </AnimatePresence>
 
-      {/* PAIR SELECTOR MODAL */}
       <AnimatePresence>
         {isSelectingPair && (
           <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 dark:bg-black/80 backdrop-blur-sm">
@@ -871,8 +870,13 @@ export default function TradingTerminal({
                     className={`w-full p-3 rounded-2xl border flex items-center justify-between transition-colors ${baseAsset === asset.symbol && selectionStep === "quote" ? "opacity-50 cursor-not-allowed border-lime-500/10 bg-white/30 dark:bg-[#121A14]/30" : "border-lime-500/20 dark:border-lime-500/10 bg-white/50 dark:bg-[#121A14]/50 hover:border-lime-500/50 hover:bg-white/80 dark:hover:bg-[#121A14]/80"}`}
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-black shadow-sm" style={{ background: asset.color || "#84cc16" }}>
-                        {asset.symbol[0]}
+                      {/* 👇 RENDERS ACTUAL IMAGE IF AVAILABLE */}
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-black shadow-sm overflow-hidden shrink-0" style={{ background: asset.color || "#84cc16" }}>
+                        {asset.image ? (
+                          <img src={asset.image} alt={asset.symbol} className="w-full h-full object-cover" />
+                        ) : (
+                          asset.symbol[0]
+                        )}
                       </div>
                       <div className="text-left">
                         <div className="font-bold text-sm text-lime-950 dark:text-white uppercase">{asset.symbol}</div>
@@ -913,16 +917,16 @@ export default function TradingTerminal({
 // // components/features/TradingTerminal.tsx
 // "use client";
 
-// import { useState, useEffect, useRef, useCallback } from "react";
+// import React, { useState, useEffect, useRef, useCallback } from "react";
 // import { useRouter } from "next/navigation";
 // import { motion, AnimatePresence } from "framer-motion";
-// import { 
+// import {
 //   Crosshair, PenTool, Minus, Trash2, ChevronDown, Search, ArrowUpRight,
 //   Settings2, MoveUpRight, Square, AlignEndHorizontal, X, Clock, LayoutGrid,
 //   History, Eye
 // } from "lucide-react";
 // import { executeTradeAction, saveDrawingAction, deleteDrawingAction, closeTradeAction } from "@/app/actions/trade";
-// import { useTour } from "@/components/providers/TourProvider"; // 👈 Imported Tour Hook
+// import { useTour } from "@/components/providers/TourProvider";
 
 // export const COMMODITIES: Record<string, any> = {
 //   CHR: { name: 'Charcoal', unit: 'bag', base: 42.50, region: 'Enugu', color: '#f59e0b' },
@@ -930,7 +934,7 @@ export default function TradingTerminal({
 //   SCN: { name: 'Scrap iron', unit: 'tonne', base: 285.00, region: 'Kano', color: '#78716c' },
 //   ENO: { name: 'Condemned oil', unit: 'barrel', base: 62.40, region: 'P/H', color: '#1e293b' },
 //   PLM: { name: 'Palm oil', unit: 'litre', base: 2.85, region: 'Benin', color: '#ea580c' },
-//   GRI: { name: 'Garri', unit: 'kg', base: 1.45, region: 'Ibadan', color: '#ca8a04' }, 
+//   GRI: { name: 'Garri', unit: 'kg', base: 1.45, region: 'Ibadan', color: '#ca8a04' },
 // };
 
 // const TIMEFRAMES: Record<string, { label: string, points: number, interval: number, vol: number }> = {
@@ -956,49 +960,48 @@ export default function TradingTerminal({
 //   return { gridInterval: 2, boundary: "year" };
 // };
 
-// export default function TradingTerminal({ 
+// export default function TradingTerminal({
 //   coin,
 //   quoteAssetSymbol,
 //   positions = [],
 //   onClosePosition,
-//   initialTrades = [], 
+//   initialTrades = [],
 //   currencySymbol = "$",
 //   availableQuotes = [],
 //   dbAssets = [],
-
-// }: { 
+// }: {
 //   coin?: any,
 //   quoteAssetSymbol?: string,
 //   positions?: any[],
 //   onClosePosition?: (id: string) => void,
-//   initialTrades?: any[], 
+//   initialTrades?: any[],
 //   currencySymbol?: string,
 //   availableQuotes?: any[],
-//   dbAssets?: any[], 
+//   dbAssets?: any[],
 // }) {
 //   const router = useRouter();
 //   const { setSteps } = useTour();
-  
+
 //   const [isMarketOpen, setIsMarketOpen] = useState(false);
 //   const [timeframe, setTimeframe] = useState("1h");
-  
+
 //   const [baseAsset, setBaseAsset] = useState(coin?.symbol?.toUpperCase() || "CHR");
 //   const [quoteAsset, setQuoteAsset] = useState(quoteAssetSymbol || "USD");
-  
+
 //   const [isSelectingPair, setIsSelectingPair] = useState(false);
 //   const [selectionStep, setSelectionStep] = useState<"base" | "quote">("base");
 //   const [searchQuery, setSearchQuery] = useState("");
-  
+
 //   const [showToolsModal, setShowToolsModal] = useState(false);
 //   const [showTimeframeModal, setShowTimeframeModal] = useState(false);
-  
+
 //   const [showHistoryModal, setShowHistoryModal] = useState(false);
 //   const [historySearch, setHistorySearch] = useState("");
 //   const [selectedHistoryTrade, setSelectedHistoryTrade] = useState<any>(null);
 
 //   const [zoom, setZoom] = useState(1);
 //   const [activeTool, setActiveTool] = useState<"cursor" | "line" | "hline" | "ray" | "rect" | "fib">("cursor");
-  
+
 //   const [drawings, setDrawings] = useState<any[]>([]);
 //   const [selectedDrawingIds, setSelectedDrawingIds] = useState<string[]>([]);
 //   const [activeTradeId, setActiveTradeId] = useState<string | null>(null);
@@ -1060,7 +1063,7 @@ export default function TradingTerminal({
 
 //   // Trend Color Logic
 //   const getTrendColor = (data: any[]) => {
-//     if (data.length < 5) return "#3b82f6"; 
+//     if (data.length < 5) return "#3b82f6";
 //     const recent = data.slice(-15);
 //     const highs = recent.map(c => c.h);
 //     const lows = recent.map(c => c.l);
@@ -1068,18 +1071,18 @@ export default function TradingTerminal({
 //     const prevHigh = Math.max(...highs.slice(0, -1));
 //     const prevLow = Math.min(...lows.slice(0, -1));
 
-//     if (currentClose < prevLow) return "#ef4444";  
-//     if (currentClose > prevHigh) return "#3b82f6"; 
+//     if (currentClose < prevLow) return "#ef4444";
+//     if (currentClose > prevHigh) return "#3b82f6";
 //     const startMid = (recent[0].h + recent[0].l) / 2;
 //     const endMid = (recent[recent.length - 1].h + recent[recent.length - 1].l) / 2;
-//     if (endMid < startMid * 0.99) return "#eab308"; 
-//     return "#3b82f6"; 
+//     if (endMid < startMid * 0.99) return "#eab308";
+//     return "#3b82f6";
 //   };
 
 //   const generateCandles = useCallback((pairId: string, tf: string) => {
 //     const cfg = TIMEFRAMES[tf];
 //     const basePrice = coin ? coin.current_price : (COMMODITIES[pairId.split("-")[0]]?.base || 1);
-    
+
 //     let seed = baseAsset.length * 100;
 //     const candles = [];
 //     let close = basePrice;
@@ -1091,7 +1094,7 @@ export default function TradingTerminal({
 //       close = open * (1 + bodyMove);
 //       const high = Math.max(open, close) * (1 + r1 * cfg.vol);
 //       const low = Math.min(open, close) * (1 - r1 * cfg.vol);
-      
+
 //       candles.push({ t: Date.now() - (cfg.points - i) * cfg.interval, o: open, h: high, l: low, c: close });
 //     }
 //     return candles;
@@ -1122,14 +1125,13 @@ export default function TradingTerminal({
 //     const plotH = H - PAD_T - PAD_B;
 
 //     const yForP = (p: number) => PAD_T + (1 - (p - pMin) / (pMax - pMin)) * plotH;
-//     const pForY = (y: number) => pMin + (1 - (y - PAD_T) / plotH) * (pMax - pMin);
-    
+
 //     const tMin = visibleData[0].t;
 //     const tMax = visibleData[visibleData.length - 1].t;
 //     const xForT = (t: number) => PAD_L + ((t - tMin) / (tMax - tMin)) * plotW;
 
 //     const parts = [];
-    
+
 //     // 1. Horizontal Grid (Price)
 //     for (let i = 0; i <= 5; i++) {
 //       const p = pMin + (pMax - pMin) * (i / 5);
@@ -1140,10 +1142,10 @@ export default function TradingTerminal({
 
 //     // 2. Vertical Grid & Time Boundaries
 //     const { gridInterval, boundary } = getChartGridConfig(timeframe);
-    
+
 //     visibleData.forEach((c, i) => {
 //       const x = xForT(c.t);
-      
+
 //       // Broken vertical lines (Grid)
 //       if (i % gridInterval === 0) {
 //         parts.push(`<line x1="${x}" y1="${PAD_T}" x2="${x}" y2="${PAD_T + plotH}" stroke="#2a2a2a" stroke-width="1" stroke-dasharray="4 4"/>`);
@@ -1162,10 +1164,10 @@ export default function TradingTerminal({
 
 //         if (isBoundary) {
 //           parts.push(`<line x1="${x}" y1="${PAD_T}" x2="${x}" y2="${PAD_T + plotH}" stroke="#555" stroke-width="1" />`);
-//           const label = boundary === "year" 
-//             ? d.getFullYear().toString() 
-//             : boundary === "month" 
-//               ? d.toLocaleString('default', { month: 'short' }) 
+//           const label = boundary === "year"
+//             ? d.getFullYear().toString()
+//             : boundary === "month"
+//               ? d.toLocaleString('default', { month: 'short' })
 //               : `${d.getDate()}/${d.getMonth() + 1}`;
 //           parts.push(`<text x="${x + 2}" y="${PAD_T + plotH + 15}" fill="#666" font-size="9" font-family="monospace">${label}</text>`);
 //         }
@@ -1218,9 +1220,9 @@ export default function TradingTerminal({
 //     // 4. Drawings
 //     drawings.forEach(d => {
 //       const isSelected = selectedDrawingIds.includes(d.id);
-//       const stroke = isSelected ? "#3b82f6" : "#eab308"; 
+//       const stroke = isSelected ? "#3b82f6" : "#eab308";
 //       const fill = isSelected ? "rgba(59, 130, 246, 0.1)" : "rgba(234, 179, 8, 0.1)";
-      
+
 //       const x1 = xForT(d.start.t);
 //       const y1 = yForP(d.start.p);
 //       const x2 = xForT(d.end.t);
@@ -1234,7 +1236,7 @@ export default function TradingTerminal({
 //         const dx = x2 - x1;
 //         const dy = y2 - y1;
 //         const extX = W - PAD_R;
-//         const extY = y1 + (dy / dx) * (extX - x1); 
+//         const extY = y1 + (dy / dx) * (extX - x1);
 //         parts.push(`<line x1="${x1}" y1="${y1}" x2="${extX}" y2="${extY}" stroke="${stroke}" stroke-width="${isSelected ? 3 : 2}" pointer-events="stroke" cursor="pointer" data-id="${d.id}" />`);
 //       } else if (d.type === "rect") {
 //         const rx = Math.min(x1, x2);
@@ -1326,10 +1328,10 @@ export default function TradingTerminal({
 //       setPinnedInfo({ x: coords.x, y: coords.y, price: coords.p, time: coords.t });
 //       const target = e.target as SVGElement;
 //       const drawingId = target.getAttribute("data-id");
-      
+
 //       if (drawingId) {
 //         if (e.shiftKey) {
-//           setSelectedDrawingIds(prev => 
+//           setSelectedDrawingIds(prev =>
 //             prev.includes(drawingId) ? prev.filter(id => id !== drawingId) : [...prev, drawingId]
 //           );
 //         } else {
@@ -1339,7 +1341,7 @@ export default function TradingTerminal({
 //         setSelectedDrawingIds([]);
 //         setPinnedInfo(null);
 //       }
-      
+
 //     } else if (activeTool === "hline") {
 //       const newDrawing = { id: Date.now().toString(), type: "hline", start: { t: coords.t, p: coords.p }, end: { t: coords.t, p: coords.p } };
 //       setDrawings(prev => [...prev, newDrawing]);
@@ -1358,11 +1360,11 @@ export default function TradingTerminal({
 //     if (!coords) return;
 
 //     if (Math.abs(coords.x - startPos.x) > 5 || Math.abs(coords.y - startPos.y) > 5) {
-//       const newDrawing = { 
-//         id: Date.now().toString(), 
-//         type: activeTool, 
-//         start: { t: startPos.t, p: startPos.p }, 
-//         end: { t: coords.t, p: coords.p } 
+//       const newDrawing = {
+//         id: Date.now().toString(),
+//         type: activeTool,
+//         start: { t: startPos.t, p: startPos.p },
+//         end: { t: coords.t, p: coords.p }
 //       };
 //       setDrawings(prev => [...prev, newDrawing]);
 //       if (activeTradeId) saveDrawingAction(activeTradeId, newDrawing);
@@ -1399,7 +1401,7 @@ export default function TradingTerminal({
 //   const handleCloseOrForfeit = (trade: any) => {
 //     const id = trade._id || trade.id;
 //     const isProfit = (trade.pnl || 0) > 0;
-    
+
 //     if (window.confirm(isProfit ? "Are you sure you want to Take Profit?" : "Are you sure you want to Close & Forfeit this trade?")) {
 //       if (onClosePosition) {
 //         onClosePosition(id);
@@ -1450,13 +1452,23 @@ export default function TradingTerminal({
 //     return baseAssets;
 //   }, [dbAssets, availableQuotes, coin]);
 
+//   // 👇 These were missing (causing TS2304 / TS7006). Defined before JSX.
+//   const filteredAssets = allAvailableAssets.filter((asset: any) =>
+//     (asset.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+//     (asset.symbol || "").toLowerCase().includes(searchQuery.toLowerCase())
+//   );
+
+//   const filteredHistory = activeTradesList.filter((t: any) =>
+//     (t.baseAsset || t.symbol || "").toLowerCase().includes(historySearch.toLowerCase())
+//   );
+
 //   return (
 //     <div className="flex flex-col h-full bg-[#f4fbf5]/90 dark:bg-[#0a0f0b]/90 backdrop-blur-2xl border border-lime-500/20 dark:border-lime-500/10 rounded-3xl shadow-[0_8px_32px_0_rgba(132,204,22,0.15)] dark:shadow-[0_8px_32px_0_rgba(0,0,0,0.5)] overflow-hidden relative">
-      
+
 //       {/* HEADER */}
-//       <div id="tour-terminal-header" className="flex items-center justify-between p-3 border-b border-lime-500/10 bg-white/40 dark:bg-[#121A14]/60 backdrop-blur-md shrink-0"> {/* 👈 Added Tour ID */}
-//         <button 
-//           onClick={() => { setIsSelectingPair(true); setSelectionStep("base"); setSearchQuery(""); }} 
+//       <div id="tour-terminal-header" className="flex items-center justify-between p-3 border-b border-lime-500/10 bg-white/40 dark:bg-[#121A14]/60 backdrop-blur-md shrink-0">
+//         <button
+//           onClick={() => { setIsSelectingPair(true); setSelectionStep("base"); setSearchQuery(""); }}
 //           className="flex items-center gap-2 bg-white/50 dark:bg-[#050806]/80 px-3 py-1.5 rounded-lg border border-lime-500/20 hover:border-lime-500 cursor-pointer transition-colors"
 //         >
 //           <span className="text-sm font-bold uppercase tracking-wider text-lime-950 dark:text-[#ecfdf5]">
@@ -1464,7 +1476,7 @@ export default function TradingTerminal({
 //           </span>
 //           <ChevronDown size={14} className="text-lime-600 dark:text-lime-400" />
 //         </button>
-        
+
 //         <div className={`text-xs font-bold px-2 py-1 rounded ${isMarketOpen ? "bg-green-500/10 text-green-600 dark:text-green-500" : "bg-red-500/10 text-red-600 dark:text-red-500"}`}>
 //           {isMarketOpen ? "MARKET OPEN" : "MARKET CLOSED"}
 //         </div>
@@ -1472,10 +1484,10 @@ export default function TradingTerminal({
 
 //       {/* EXPANDED CHART AREA */}
 //       <div className="flex-1 flex flex-col relative overflow-hidden">
-        
+
 //         <div className="flex items-center justify-between gap-2 p-2 bg-white/30 dark:bg-[#121A14]/50 border-b border-lime-500/10 backdrop-blur z-10">
-//           <button 
-//             id="tour-terminal-tools" // 👈 Added Tour ID
+//           <button
+//             id="tour-terminal-tools"
 //             onClick={() => { setShowToolsModal(!showToolsModal); setShowTimeframeModal(false); }}
 //             className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-colors shadow-sm ${showToolsModal ? "bg-lime-600 text-white border-lime-600" : "bg-white/50 dark:bg-[#050806]/80 border-lime-500/20 text-lime-800 dark:text-lime-200 hover:border-lime-500/50"}`}
 //           >
@@ -1484,7 +1496,7 @@ export default function TradingTerminal({
 //           </button>
 
 //           <button
-//             id="tour-terminal-timeframe" // 👈 Added Tour ID
+//             id="tour-terminal-timeframe"
 //             onClick={() => { setShowTimeframeModal(!showTimeframeModal); setShowToolsModal(false); }}
 //             className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-colors shadow-sm ${showTimeframeModal ? "bg-lime-600 text-white border-lime-600" : "bg-white/50 dark:bg-[#050806]/80 border-lime-500/20 text-lime-800 dark:text-lime-200 hover:border-lime-500/50"}`}
 //           >
@@ -1494,9 +1506,9 @@ export default function TradingTerminal({
 //           </button>
 //         </div>
 
-//         <div 
-//           id="tour-terminal-chart" // 👈 Added Tour ID
-//           ref={chartContainerRef} 
+//         <div
+//           id="tour-terminal-chart"
+//           ref={chartContainerRef}
 //           className="flex-1 w-full h-full cursor-crosshair bg-transparent relative"
 //           onWheel={(e) => {
 //             if (e.deltaY > 0) setZoom(z => Math.max(0.5, z / 1.1));
@@ -1511,10 +1523,10 @@ export default function TradingTerminal({
 
 //           {/* CROSSHAIR TOOLTIP */}
 //           {pinnedInfo && (
-//             <div 
+//             <div
 //               className="absolute z-30 bg-[#0a0f0b]/90 border border-lime-500/30 text-white text-[10px] font-mono p-2 rounded-lg shadow-xl pointer-events-none flex flex-col gap-1 backdrop-blur-md"
-//               style={{ 
-//                 left: pinnedInfo.x > (chartContainerRef.current!.clientWidth / 2) ? pinnedInfo.x - 100 : pinnedInfo.x + 15, 
+//               style={{
+//                 left: pinnedInfo.x > (chartContainerRef.current!.clientWidth / 2) ? pinnedInfo.x - 100 : pinnedInfo.x + 15,
 //                 top: pinnedInfo.y - 40
 //               }}
 //             >
@@ -1524,7 +1536,7 @@ export default function TradingTerminal({
 //           )}
 
 //           {mousePos && !pinnedInfo && (
-//             <div 
+//             <div
 //               className="absolute z-20 bg-[#0a0f0b]/80 border border-lime-500/20 text-white text-[10px] font-mono p-1.5 rounded-lg shadow-lg pointer-events-none flex flex-col opacity-80"
 //               style={{ left: mousePos.x + 15, top: mousePos.y - 30 }}
 //             >
@@ -1536,8 +1548,8 @@ export default function TradingTerminal({
 
 //       {/* BOTTOM ALLOWANCE: HISTORY TRIGGER */}
 //       <div className="shrink-0 p-3 bg-white/40 dark:bg-[#121A14]/60 backdrop-blur-md border-t border-lime-500/10">
-//         <button 
-//           id="tour-terminal-history" // 👈 Added Tour ID
+//         <button
+//           id="tour-terminal-history"
 //           onClick={() => setShowHistoryModal(true)}
 //           className="w-full flex items-center justify-between bg-white/50 dark:bg-[#050806]/80 border border-lime-500/20 rounded-xl px-4 py-3 hover:border-lime-500/50 transition-colors group"
 //         >
@@ -1556,9 +1568,9 @@ export default function TradingTerminal({
 //       <AnimatePresence>
 //         {showHistoryModal && (
 //           <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 dark:bg-black/80 backdrop-blur-sm">
-//             <motion.div 
-//               initial={{ opacity: 0, scale: 0.95, y: 20 }} 
-//               animate={{ opacity: 1, scale: 1, y: 0 }} 
+//             <motion.div
+//               initial={{ opacity: 0, scale: 0.95, y: 20 }}
+//               animate={{ opacity: 1, scale: 1, y: 0 }}
 //               exit={{ opacity: 0, scale: 0.95, y: 20 }}
 //               className="relative w-full max-w-lg bg-[#f4fbf5]/95 dark:bg-[#0a0f0b]/95 backdrop-blur-2xl border border-lime-500/30 dark:border-lime-500/10 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]"
 //             >
@@ -1574,9 +1586,9 @@ export default function TradingTerminal({
 //               <div className="p-3 shrink-0">
 //                 <div className="relative">
 //                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-lime-600/50 dark:text-lime-400/50" size={16} />
-//                   <input 
-//                     type="text" 
-//                     placeholder="Search history..." 
+//                   <input
+//                     type="text"
+//                     placeholder="Search history..."
 //                     value={historySearch}
 //                     onChange={(e) => setHistorySearch(e.target.value)}
 //                     className="w-full bg-white/50 dark:bg-[#050806]/80 border border-lime-500/20 rounded-full py-2 pl-9 pr-4 text-sm text-lime-950 dark:text-white focus:outline-none focus:border-lime-500 transition-colors"
@@ -1586,11 +1598,11 @@ export default function TradingTerminal({
 
 //               <div className="flex-1 overflow-y-auto p-2 space-y-2 custom-scrollbar">
 //                 {filteredHistory.map((t) => (
-//                   <div 
-//                     key={t._id || t.id} 
+//                   <div
+//                     key={t._id || t.id}
 //                     className={`p-3 rounded-2xl border transition-colors flex flex-col gap-2 cursor-pointer ${
-//                       activeTradeId === (t._id || t.id) 
-//                         ? "border-lime-500 bg-lime-500/10" 
+//                       activeTradeId === (t._id || t.id)
+//                         ? "border-lime-500 bg-lime-500/10"
 //                         : "border-lime-500/20 dark:border-lime-500/10 bg-white/50 dark:bg-[#121A14]/50 hover:border-lime-500/50"
 //                     }`}
 //                     onClick={() => setActiveTradeId(t._id || t.id)}
@@ -1608,18 +1620,18 @@ export default function TradingTerminal({
 //                         {t.pnl >= 0 ? "+" : ""}{currencySymbol}{(t.pnl || 0).toFixed(2)}
 //                       </span>
 //                     </div>
-                    
+
 //                     <div className="flex justify-between items-center text-xs font-mono text-lime-800/60 dark:text-lime-200/50">
 //                       <div>Qty: {t.amount || t.lots} @ ${t.entryPrice || t.entry}</div>
 //                       <div className="flex gap-1">
 //                         <button onClick={(e) => { e.stopPropagation(); setSelectedHistoryTrade(t); }} className="p-1.5 bg-lime-500/10 text-lime-600 rounded hover:bg-lime-500/20" title="View Details"><Eye size={14} /></button>
 //                         <button onClick={(e) => { e.stopPropagation(); handleDeleteHistory(t._id || t.id); }} className="p-1.5 bg-red-500/10 text-red-600 rounded hover:bg-red-500/20" title="Delete Record"><Trash2 size={14} /></button>
-                        
-//                         <button 
-//                           onClick={(e) => { e.stopPropagation(); handleCloseOrForfeit(t); }} 
+
+//                         <button
+//                           onClick={(e) => { e.stopPropagation(); handleCloseOrForfeit(t); }}
 //                           className={`px-2 py-1 rounded font-bold text-[10px] transition-colors ${
-//                             (t.pnl || 0) > 0 
-//                               ? "bg-green-500/10 text-green-600 hover:bg-green-500/20" 
+//                             (t.pnl || 0) > 0
+//                               ? "bg-green-500/10 text-green-600 hover:bg-green-500/20"
 //                               : "bg-red-500/10 text-red-600 hover:bg-red-500/20"
 //                           }`}
 //                         >
@@ -1644,9 +1656,9 @@ export default function TradingTerminal({
 //       <AnimatePresence>
 //         {selectedHistoryTrade && (
 //           <div className="fixed inset-0 z-[210] flex items-center justify-center p-4 bg-black/60 dark:bg-black/80 backdrop-blur-sm">
-//             <motion.div 
-//               initial={{ opacity: 0, scale: 0.95 }} 
-//               animate={{ opacity: 1, scale: 1 }} 
+//             <motion.div
+//               initial={{ opacity: 0, scale: 0.95 }}
+//               animate={{ opacity: 1, scale: 1 }}
 //               exit={{ opacity: 0, scale: 0.95 }}
 //               className="relative w-full max-w-sm bg-[#f4fbf5]/95 dark:bg-[#0a0f0b]/95 border border-lime-500/30 rounded-3xl p-6 shadow-2xl flex flex-col gap-4"
 //             >
@@ -1670,9 +1682,9 @@ export default function TradingTerminal({
 //       {/* TIMEFRAME MODAL */}
 //       <AnimatePresence>
 //         {showTimeframeModal && (
-//           <motion.div 
-//             initial={{ opacity: 0, y: 10, scale: 0.95 }} 
-//             animate={{ opacity: 1, y: 0, scale: 1 }} 
+//           <motion.div
+//             initial={{ opacity: 0, y: 10, scale: 0.95 }}
+//             animate={{ opacity: 1, y: 0, scale: 1 }}
 //             exit={{ opacity: 0, y: 10, scale: 0.95 }}
 //             className="absolute top-28 right-2 z-50 p-3 bg-white/95 dark:bg-[#121A14]/95 backdrop-blur-xl border border-lime-500/30 dark:border-lime-500/20 rounded-2xl shadow-2xl w-56"
 //           >
@@ -1680,15 +1692,15 @@ export default function TradingTerminal({
 //               <span className="text-[10px] font-bold text-lime-800/60 dark:text-lime-200/50 uppercase tracking-widest">Timeframes</span>
 //               <button onClick={() => setShowTimeframeModal(false)} className="text-red-500 hover:bg-red-500/10 p-1 rounded-full transition-colors"><X size={14} /></button>
 //             </div>
-            
+
 //             <div className="grid grid-cols-3 gap-1.5 max-h-64 overflow-y-auto custom-scrollbar">
 //               {Object.entries(TIMEFRAMES).map(([key, tf]) => (
 //                 <button
 //                   key={key}
 //                   onClick={() => { setTimeframe(key); setShowTimeframeModal(false); }}
 //                   className={`py-2 rounded-lg text-[11px] font-bold font-mono transition-all flex items-center justify-center ${
-//                     timeframe === key 
-//                       ? "bg-lime-600 text-white shadow-md" 
+//                     timeframe === key
+//                       ? "bg-lime-600 text-white shadow-md"
 //                       : "text-lime-800 dark:text-lime-200 bg-lime-500/5 hover:bg-lime-500/15"
 //                   }`}
 //                 >
@@ -1703,23 +1715,23 @@ export default function TradingTerminal({
 //       {/* TOOLS MODAL */}
 //       <AnimatePresence>
 //         {showToolsModal && (
-//           <motion.div 
-//             initial={{ opacity: 0, y: 10, scale: 0.95 }} 
-//             animate={{ opacity: 1, y: 0, scale: 1 }} 
+//           <motion.div
+//             initial={{ opacity: 0, y: 10, scale: 0.95 }}
+//             animate={{ opacity: 1, y: 0, scale: 1 }}
 //             exit={{ opacity: 0, y: 10, scale: 0.95 }}
 //             className="absolute top-28 left-2 z-50 p-2 bg-white/95 dark:bg-[#121A14]/95 backdrop-blur-xl border border-lime-500/30 dark:border-lime-500/20 rounded-2xl shadow-2xl flex flex-col gap-1 w-14"
 //           >
 //             <button onClick={() => setShowToolsModal(false)} className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full shadow-md hover:bg-red-600"><X size={12} /></button>
-            
+
 //             <button onClick={() => { setActiveTool("cursor"); setShowToolsModal(false); }} className={`p-2 rounded-xl flex justify-center transition-colors ${activeTool === "cursor" ? "bg-lime-600 text-white shadow-md" : "text-lime-800 dark:text-lime-200 hover:bg-lime-500/10"}`} title="Cursor"><Crosshair size={20} /></button>
 //             <button onClick={() => { setActiveTool("line"); setShowToolsModal(false); }} className={`p-2 rounded-xl flex justify-center transition-colors ${activeTool === "line" ? "bg-lime-600 text-white shadow-md" : "text-lime-800 dark:text-lime-200 hover:bg-lime-500/10"}`} title="Trend Line"><PenTool size={20} /></button>
 //             <button onClick={() => { setActiveTool("hline"); setShowToolsModal(false); }} className={`p-2 rounded-xl flex justify-center transition-colors ${activeTool === "hline" ? "bg-lime-600 text-white shadow-md" : "text-lime-800 dark:text-lime-200 hover:bg-lime-500/10"}`} title="Horizontal Line"><Minus size={20} /></button>
 //             <button onClick={() => { setActiveTool("ray"); setShowToolsModal(false); }} className={`p-2 rounded-xl flex justify-center transition-colors ${activeTool === "ray" ? "bg-lime-600 text-white shadow-md" : "text-lime-800 dark:text-lime-200 hover:bg-lime-500/10"}`} title="Ray"><MoveUpRight size={20} /></button>
 //             <button onClick={() => { setActiveTool("rect"); setShowToolsModal(false); }} className={`p-2 rounded-xl flex justify-center transition-colors ${activeTool === "rect" ? "bg-lime-600 text-white shadow-md" : "text-lime-800 dark:text-lime-200 hover:bg-lime-500/10"}`} title="Rectangle"><Square size={20} /></button>
 //             <button onClick={() => { setActiveTool("fib"); setShowToolsModal(false); }} className={`p-2 rounded-xl flex justify-center transition-colors ${activeTool === "fib" ? "bg-lime-600 text-white shadow-md" : "text-lime-800 dark:text-lime-200 hover:bg-lime-500/10"}`} title="Fibonacci"><AlignEndHorizontal size={20} /></button>
-            
+
 //             <div className="h-px w-full bg-lime-500/20 my-1" />
-            
+
 //             <button onClick={deleteSelected} disabled={selectedDrawingIds.length === 0} className={`p-2 rounded-xl flex justify-center transition-colors ${selectedDrawingIds.length > 0 ? "text-red-500 hover:bg-red-500/10" : "text-lime-500/30 dark:text-lime-200/20 cursor-not-allowed"}`} title="Delete Selected"><Trash2 size={20} /></button>
 //           </motion.div>
 //         )}
@@ -1729,9 +1741,9 @@ export default function TradingTerminal({
 //       <AnimatePresence>
 //         {isSelectingPair && (
 //           <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 dark:bg-black/80 backdrop-blur-sm">
-//             <motion.div 
-//               initial={{ opacity: 0, scale: 0.95, y: 20 }} 
-//               animate={{ opacity: 1, scale: 1, y: 0 }} 
+//             <motion.div
+//               initial={{ opacity: 0, scale: 0.95, y: 20 }}
+//               animate={{ opacity: 1, scale: 1, y: 0 }}
 //               exit={{ opacity: 0, scale: 0.95, y: 20 }}
 //               className="relative w-full max-w-md bg-[#f4fbf5]/95 dark:bg-[#0a0f0b]/95 backdrop-blur-2xl border border-lime-500/30 dark:border-lime-500/10 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]"
 //             >
@@ -1747,9 +1759,9 @@ export default function TradingTerminal({
 //               <div className="p-3 shrink-0">
 //                 <div className="relative">
 //                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-lime-600/50 dark:text-lime-400/50" size={16} />
-//                   <input 
-//                     type="text" 
-//                     placeholder="Search assets..." 
+//                   <input
+//                     type="text"
+//                     placeholder="Search assets..."
 //                     value={searchQuery}
 //                     onChange={(e) => setSearchQuery(e.target.value)}
 //                     className="w-full bg-white/50 dark:bg-[#050806]/80 border border-lime-500/20 rounded-full py-2 pl-9 pr-4 text-sm text-lime-950 dark:text-white focus:outline-none focus:border-lime-500 transition-colors"
@@ -1759,19 +1771,19 @@ export default function TradingTerminal({
 
 //               <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
 //                 {filteredAssets.map((asset) => (
-//                   <button 
-//                     key={asset.id} 
+//                   <button
+//                     key={asset.id}
 //                     onClick={() => {
 //                       if (selectionStep === "base") {
 //                         setBaseAsset(asset.symbol);
 //                         setSelectionStep("quote");
 //                         setSearchQuery("");
 //                       } else {
-//                         if (asset.symbol === baseAsset) return; 
+//                         if (asset.symbol === baseAsset) return;
 //                         setQuoteAsset(asset.symbol);
 //                         setIsSelectingPair(false);
 //                       }
-//                     }} 
+//                     }}
 //                     className={`w-full p-3 rounded-2xl border flex items-center justify-between transition-colors ${baseAsset === asset.symbol && selectionStep === "quote" ? "opacity-50 cursor-not-allowed border-lime-500/10 bg-white/30 dark:bg-[#121A14]/30" : "border-lime-500/20 dark:border-lime-500/10 bg-white/50 dark:bg-[#121A14]/50 hover:border-lime-500/50 hover:bg-white/80 dark:hover:bg-[#121A14]/80"}`}
 //                   >
 //                     <div className="flex items-center gap-3">
@@ -1796,7 +1808,7 @@ export default function TradingTerminal({
 //               </div>
 
 //               <div className="p-3 border-t border-lime-500/10 bg-white/40 dark:bg-[#121A14]/60 shrink-0">
-//                 <button 
+//                 <button
 //                   onClick={() => {
 //                     setIsSelectingPair(false);
 //                     router.push("/markets");
