@@ -46,7 +46,8 @@ export default function ChartSidePanel({
   setQuoteCurrency,
   availableQuotes,
   initialIsFavorited,
-  isLoggedIn
+  isLoggedIn,
+  onRequireAuth
 }: { 
   isOpen: boolean, 
   onClose: () => void, 
@@ -56,6 +57,7 @@ export default function ChartSidePanel({
   availableQuotes: Quote[],
   initialIsFavorited: boolean,
   isLoggedIn: boolean
+  onRequireAuth: () => void;
 }) {
   const router = useRouter();
   

@@ -2,7 +2,9 @@
 /* THIS LINE IS CRITICAL FOR TAILWIND V4 DARK MODE */
 @custom-variant dark (&:where(.dark, .dark *));
 
-
+html {
+  scrollbar-gutter: stable;
+}
 /* 👇 React Day Picker Custom Overrides to match Quantix Design System 👇 */
 .rdp {
   --rdp-cell-size: 40px;

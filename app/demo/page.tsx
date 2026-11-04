@@ -84,7 +84,7 @@ export default function DemoPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-extrabold tracking-tight text-lime-950 dark:text-[#ecfdf5]">Sandbox Dashboard</h1>
+            <h1 className="text-3xl font-extrabold tracking-tight text-lime-950 dark:text-[#ecfdf5]">Demo</h1>
             <p className="text-lime-800/70 dark:text-lime-200/50 mt-1 font-medium">Explore the terminal and test your strategies.</p>
           </div>
           
@@ -132,7 +132,7 @@ export default function DemoPage() {
           >
             <div>
               <div className="flex items-center justify-between mb-4">
-                <h3 className="font-bold text-lime-950 dark:text-[#ecfdf5]">Demo Tier</h3>
+                <h3 className="font-bold text-lime-950 dark:text-[#ecfdf5]">Tier</h3>
                 <ShieldCheck className="text-lime-600 dark:text-lime-400" size={24} />
               </div>
               <div className="text-4xl font-extrabold text-lime-600 dark:text-lime-400 font-mono mb-1">Tier 2</div>

@@ -3,6 +3,8 @@ import { getAdminDashboardStats } from "@/app/actions/admin";
 import { Users, Activity, DollarSign, ArrowRight, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { connection } from "next/server"; // <--- IMPORT ADDED
+
+
 export const instant = false;
 export default async function AdminDashboardPage() {
   // FIX: Opt out of static prerendering for this dynamic admin page

@@ -4,22 +4,24 @@ import { useState, useEffect } from "react";
 import { m, AnimatePresence } from "framer-motion";
 import { Percent } from "lucide-react";
 
+// 👇 MOVED OUTSIDE TO PREVENT RE-RENDER INFINITE LOOPS
+const TABS = ['Markets', 'Spot', 'Futures', 'Earn', 'Wallet'];
+
 export default function TerminalSection() {
   const [activeTab, setActiveTab] = useState('Spot');
   const [isAutoPlayPaused, setIsAutoPlayPaused] = useState(false);
-  const tabs = ['Markets', 'Spot', 'Futures', 'Earn', 'Wallet'];
 
   useEffect(() => {
     if (isAutoPlayPaused) return;
     const interval = setInterval(() => {
       setActiveTab((current) => {
-        const currentIndex = tabs.indexOf(current);
-        const nextIndex = (currentIndex + 1) % tabs.length;
-        return tabs[nextIndex];
+        const currentIndex = TABS.indexOf(current);
+        const nextIndex = (currentIndex + 1) % TABS.length;
+        return TABS[nextIndex];
       });
     }, 4000);
     return () => clearInterval(interval);
-  }, [isAutoPlayPaused, tabs]);
+  }, [isAutoPlayPaused]); // 👈 Removed TABS from dependency array
 
   const handleTabClick = (tab: string) => {
     setActiveTab(tab);
@@ -28,7 +30,7 @@ export default function TerminalSection() {
   };
 
   return (
-    <m.div initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-100px" }} transition={{ duration: 0.6 }} className="max-w-6xl mx-auto mt-24 sm:mt-32 relative z-20">
+    <m.div initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-100px" }} transition={{ duration: 0.6 }} className="max-w-6xl mx-auto mt-24 sm:mt-32 relative z-20 px-4">
       <div className="text-center mb-12">
         <h2 className="text-3xl sm:text-4xl font-extrabold text-lime-950 dark:text-[#ecfdf5] tracking-tight mb-4">Your personal command center</h2>
         <p className="text-base text-lime-800/70 dark:text-lime-200/60 font-medium max-w-2xl mx-auto">
@@ -37,6 +39,7 @@ export default function TerminalSection() {
       </div>
 
       <div className="relative rounded-3xl overflow-hidden border border-lime-500/20 dark:border-lime-500/10 bg-white/60 dark:bg-[#0a0f0b]/80 backdrop-blur-xl shadow-2xl flex flex-col">
+        
         {/* Terminal Top Bar */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-lime-500/10 bg-white/40 dark:bg-black/40">
           <div className="flex items-center gap-4">
@@ -55,10 +58,23 @@ export default function TerminalSection() {
           </div>
         </div>
 
+        {/* 👇 NEW: Mobile Tab Bar (Scrollable) */}
+        <div className="flex md:hidden overflow-x-auto hide-scrollbar border-b border-lime-500/10 bg-white/20 dark:bg-black/20">
+          {TABS.map((item) => (
+            <button 
+              key={item} 
+              onClick={() => handleTabClick(item)}
+              className={`flex-1 whitespace-nowrap px-4 py-3 text-xs font-bold transition-colors ${activeTab === item ? 'text-lime-600 dark:text-lime-400 border-b-2 border-lime-500 bg-lime-500/5' : 'text-lime-800/50 dark:text-lime-200/40'}`}
+            >
+              {item}
+            </button>
+          ))}
+        </div>
+
         <div className="flex h-[350px] sm:h-[450px]">
-          {/* Slider Sidebar Tabs */}
+          {/* Desktop Sidebar Tabs */}
           <div className="hidden md:flex flex-col w-48 border-r border-lime-500/10 bg-white/20 dark:bg-black/20 p-4 space-y-2">
-            {tabs.map((item) => (
+            {TABS.map((item) => (
               <button 
                 key={item} 
                 onClick={() => handleTabClick(item)}
@@ -95,20 +111,14 @@ export default function TerminalSection() {
                   transition={{ duration: 0.3, ease: "easeInOut" }}
                   className="absolute inset-0 p-6 flex flex-col"
                 >
+                  {/* ... Your existing inner rendering logic for Spot, Markets, Futures, Earn, Wallet stays exactly the same ... */}
                   {activeTab === 'Spot' && (
                     <div className="flex-1 relative flex flex-col">
                       <div className="absolute right-0 top-0 bottom-8 flex flex-col justify-between text-[10px] font-mono text-lime-800/40 dark:text-lime-200/30">
                         <span>$1600</span><span>$1550</span><span>$1500</span><span>$1450</span><span>$1400</span>
                       </div>
                       <div className="flex-1 flex items-end justify-around pb-4 pr-10 gap-1 sm:gap-2">
-                        {[
-                          { h: 'h-20', b: 'bg-red-500', y: 'mb-10' }, { h: 'h-32', b: 'bg-green-500', y: 'mb-5' },
-                          { h: 'h-24', b: 'bg-red-500', y: 'mb-12' }, { h: 'h-40', b: 'bg-green-500', y: 'mb-2' },
-                          { h: 'h-28', b: 'bg-green-500', y: 'mb-8' }, { h: 'h-16', b: 'bg-red-500', y: 'mb-16' },
-                          { h: 'h-48', b: 'bg-green-500', y: 'mb-0' }, { h: 'h-24', b: 'bg-red-500', y: 'mb-10' },
-                          { h: 'h-36', b: 'bg-green-500', y: 'mb-4' }, { h: 'h-20', b: 'bg-red-500', y: 'mb-14' },
-                          { h: 'h-28', b: 'bg-green-500', y: 'mb-8' }, { h: 'h-44', b: 'bg-green-500', y: 'mb-2' },
-                        ].map((candle, i) => (
+                        {[ { h: 'h-20', b: 'bg-red-500', y: 'mb-10' }, { h: 'h-32', b: 'bg-green-500', y: 'mb-5' }, { h: 'h-24', b: 'bg-red-500', y: 'mb-12' }, { h: 'h-40', b: 'bg-green-500', y: 'mb-2' }, { h: 'h-28', b: 'bg-green-500', y: 'mb-8' }, { h: 'h-16', b: 'bg-red-500', y: 'mb-16' }, { h: 'h-48', b: 'bg-green-500', y: 'mb-0' }, { h: 'h-24', b: 'bg-red-500', y: 'mb-10' }, { h: 'h-36', b: 'bg-green-500', y: 'mb-4' }, { h: 'h-20', b: 'bg-red-500', y: 'mb-14' }, { h: 'h-28', b: 'bg-green-500', y: 'mb-8' }, { h: 'h-44', b: 'bg-green-500', y: 'mb-2' }, ].map((candle, i) => (
                           <div key={i} className={`relative w-2 sm:w-4 flex flex-col items-center justify-between ${candle.y}`}>
                             <div className={`w-px h-6 ${candle.b} opacity-50`}></div>
                             <div className={`w-full ${candle.h} ${candle.b} rounded-sm opacity-80`}></div>
@@ -121,7 +131,6 @@ export default function TerminalSection() {
                       </div>
                     </div>
                   )}
-
                   {activeTab === 'Markets' && (
                     <div className="flex-1 flex flex-col justify-center gap-4">
                       {['BTC / USD', 'ETH / USD', 'SOL / USD'].map((pair, i) => (
@@ -138,7 +147,6 @@ export default function TerminalSection() {
                       ))}
                     </div>
                   )}
-
                   {activeTab === 'Futures' && (
                     <div className="flex-1 flex flex-col justify-center items-center text-center space-y-4">
                       <div className="p-4 rounded-xl border border-lime-500/20 bg-lime-500/5 w-full max-w-sm">
@@ -152,7 +160,6 @@ export default function TerminalSection() {
                       <p className="text-sm text-lime-800/60 dark:text-lime-200/50">Advanced derivatives trading coming soon.</p>
                     </div>
                   )}
-
                   {activeTab === 'Earn' && (
                     <div className="flex-1 flex flex-col justify-center items-center text-center">
                        <div className="w-16 h-16 rounded-full bg-lime-500/20 flex items-center justify-center mb-4 text-lime-600">
@@ -162,7 +169,6 @@ export default function TerminalSection() {
                        <p className="text-sm text-lime-800/60 dark:text-lime-200/50 max-w-xs">Stake your crypto assets to earn up to 12% APY. Unlock staking by reaching Tier 2.</p>
                     </div>
                   )}
-
                   {activeTab === 'Wallet' && (
                     <div className="flex-1 flex flex-col justify-center space-y-4">
                       <div className="p-4 rounded-xl border border-lime-500/20 bg-lime-500/5 flex justify-between items-center">

@@ -1,3 +1,4 @@
+
 // lib/session.ts
 import { cookies } from "next/headers";
 import { adminAuth } from "@/lib/firebase-admin";
@@ -5,12 +6,15 @@ import connectDB from "@/lib/db";
 import User from "@/lib/models/User";
 
 export async function getServerSession() {
-  try {
-    const cookieStore = await cookies();
-    const sessionCookie = cookieStore.get("session")?.value;
-    
-    if (!sessionCookie) return null;
+  // 👇 1. Pull this OUT of the try/catch block.
+  // If Next.js throws a dynamic error during build, let it bubble up!
+  const cookieStore = await cookies();
+  const sessionCookie = cookieStore.get("session")?.value;
+  
+  if (!sessionCookie) return null;
 
+  // 👇 2. Keep the try/catch ONLY around the database and token logic
+  try {
     const decodedClaims = await adminAuth.verifySessionCookie(sessionCookie, true);
     
     await connectDB();
@@ -31,38 +35,3 @@ export async function getServerSession() {
     return null;
   }
 }
-// lib/session.ts
-// import { cookies } from 'next/headers';
-// import { adminAuth } from './firebase-admin';
-// import connectDB from './db';
-// import User from './models/User';
-// import { SafeUser } from '@/types/dto';
-
-// export async function getServerSession(): Promise<SafeUser | null> {
-//   try {
-//     const cookieStore = await cookies();
-//     const sessionCookie = cookieStore.get('session')?.value;
-//     if (!sessionCookie) return null;
-
-//     // RESTORED: 'true' ensures we check if the session has been revoked
-//     const decodedClaims = await adminAuth.verifySessionCookie(sessionCookie, true);
-
-//     await connectDB();
-//     const user = await User.findOne({ firebaseUid: decodedClaims.uid }).lean();
-
-//     if (!user || user.status === 'suspended' || user.status === 'closed') {
-//       return null;
-//     }
-
-//     return {
-//       id: user._id.toString(),
-//       displayName: user.displayName,
-//       tier: user.kycTier,
-//       email: user.email,
-//       displayCurrency: user.displayCurrency.assetId,
-//       role: user.role,
-//     };
-//   } catch (error) {
-//     return null;
-//   }
-// }

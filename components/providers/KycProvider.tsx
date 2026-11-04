@@ -1,6 +1,7 @@
+// components/providers/KycProvider.tsx
 "use client";
 
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState } from "react";
 
 type Tier = 0 | 1 | 2 | 3;
 
@@ -13,36 +14,52 @@ interface KycContextType {
 
 const KycContext = createContext<KycContextType | undefined>(undefined);
 
-export function KycProvider({ children }: { children: React.ReactNode }) {
-  const [tier, setTierState] = useState<Tier>(0);
-  const [isSkipped, setIsSkipped] = useState(false);
-  const [mounted, setMounted] = useState(false);
+function writeCookie(name: string, value: string, maxAge: number) {
+  if (typeof document === "undefined") return;
+  document.cookie = `${name}=${encodeURIComponent(value)}; path=/; max-age=${maxAge}; SameSite=Lax`;
+}
 
-  useEffect(() => {
-    setMounted(true);
-    const savedTier = localStorage.getItem("user_tier");
-    const savedSkip = localStorage.getItem("kyc_skipped");
-    
-    if (savedTier) setTierState(parseInt(savedTier) as Tier);
-    if (savedSkip === "true") setIsSkipped(true);
-  }, []);
+function clearCookie(name: string) {
+  if (typeof document === "undefined") return;
+  document.cookie = `${name}=; path=/; max-age=0; SameSite=Lax`;
+}
+
+export function KycProvider({
+  children,
+  initialTier = 0,
+  initialSkipped = false,
+}: {
+  children: React.ReactNode;
+  initialTier?: Tier;
+  initialSkipped?: boolean;
+}) {
+  const [tier, setTierState] = useState<Tier>(initialTier);
+  const [isSkipped, setIsSkipped] = useState<boolean>(initialSkipped);
 
   const setTier = (newTier: Tier) => {
     setTierState(newTier);
-    localStorage.setItem("user_tier", newTier.toString());
+    if (typeof window !== "undefined") {
+      localStorage.setItem("user_tier", newTier.toString());
+      writeCookie("user_tier", newTier.toString(), 60 * 60 * 24 * 365);
+    }
     if (newTier > 0) {
       setIsSkipped(false);
-      localStorage.removeItem("kyc_skipped");
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("kyc_skipped");
+      }
+      clearCookie("kyc_skipped");
     }
   };
 
   const skipKyc = () => {
     setIsSkipped(true);
-    localStorage.setItem("kyc_skipped", "true");
+    if (typeof window !== "undefined") {
+      localStorage.setItem("kyc_skipped", "true");
+      writeCookie("kyc_skipped", "true", 60 * 60 * 24 * 365);
+    }
   };
 
-  if (!mounted) return null;
-
+  // No `return null` — render on server with defaults from props
   return (
     <KycContext.Provider value={{ tier, setTier, isSkipped, skipKyc }}>
       {children}
