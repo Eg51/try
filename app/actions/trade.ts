@@ -4,7 +4,7 @@
 import { z } from "zod";
 import { getServerSession } from "@/lib/session";
 import connectDB from "@/lib/db";
-import User from "@/lib/models/User"; // 👈 Imported User for KYC check
+import User from "@/lib/models/User";
 import { LedgerAccount, LedgerTransaction } from "@/lib/models/Ledger";
 import { getSystemAccount, updateAccountBalance } from "@/lib/ledger-helper";
 import Trade from "@/lib/models/Trade";
@@ -94,23 +94,30 @@ export async function executeTradeAction(rawData: unknown) {
         { accountId: sysQuoteAccount._id, direction: 'debit', amount: feeInCents, balanceAfter: sysQuoteAccount.cachedBalance - feeInCents, assetId: quoteAsset },
       ];
 
-    await LedgerTransaction.create({
-      kind: 'trade', refType: 'trade', refId: `trade_${Date.now()}`, idempotencyKey, entries: entries as any
-    });
+    // 👇 CATCH LEDGER IMBALANCE ERRORS SPECIFICALLY
+    try {
+      await LedgerTransaction.create({
+        kind: 'trade', refType: 'trade', refId: `trade_${Date.now()}`, idempotencyKey, entries: entries as any
+      });
 
-    const newTrade = await Trade.create({
-      userId: session.id,
-      pair,
-      baseAsset,
-      quoteAsset,
-      side,
-      entryPrice: price,
-      amount,
-      status: 'open',
-      drawings: [],
-    });
+      const newTrade = await Trade.create({
+        userId: session.id,
+        pair,
+        baseAsset,
+        quoteAsset,
+        side,
+        entryPrice: price,
+        amount,
+        status: 'open',
+        drawings: [],
+      });
 
-    return { success: true, message: `Trade executed successfully! Fee applied: ${feePercentage}%`, tradeId: newTrade._id.toString() };
+      return { success: true, message: `Trade executed successfully! Fee applied: ${feePercentage}%`, tradeId: newTrade._id.toString() };
+
+    } catch (ledgerError: any) {
+      console.error("❌ CRITICAL: LEDGER EXECUTION FAILED:", ledgerError);
+      return { error: "A system error prevented this trade from completing safely. Our engineers have been notified." };
+    }
 
   } catch (error: any) {
     console.error("Trade error:", error);
@@ -198,10 +205,11 @@ export async function getOpenTradesAction() {
 // import { z } from "zod";
 // import { getServerSession } from "@/lib/session";
 // import connectDB from "@/lib/db";
+// import User from "@/lib/models/User"; // 👈 Imported User for KYC check
 // import { LedgerAccount, LedgerTransaction } from "@/lib/models/Ledger";
 // import { getSystemAccount, updateAccountBalance } from "@/lib/ledger-helper";
 // import Trade from "@/lib/models/Trade";
-// import Settings from "@/lib/models/Settings"; // 👈 Imported Settings
+// import Settings from "@/lib/models/Settings"; 
 
 // const orderSchema = z.object({
 //   pair: z.string(), 
@@ -223,15 +231,22 @@ export async function getOpenTradesAction() {
     
 //     await connectDB();
 
+//     // 👇 BACKEND KYC GATING
+//     const user = await User.findById(session.id);
+//     if (!user) return { error: "User not found." };
+    
+//     if (user.kycTier < 1) {
+//       return { error: "KYC verification required. Please upgrade your tier to trade." };
+//     }
+
 //     // 👇 FETCH DYNAMIC FEE
 //     const settings = await Settings.findOne().lean();
-//     const feePercentage = settings?.platformFeePercent ?? 0.1; // Fallback to 0.1%
+//     const feePercentage = settings?.platformFeePercent ?? 0.1; 
 //     const feeMultiplier = feePercentage / 100;
 
 //     const tradeValue = price * amount;
 //     const feeAmount = tradeValue * feeMultiplier;
     
-//     // The user pays Trade Value + Fee (if buying)
 //     const totalCost = side === "buy" ? tradeValue + feeAmount : tradeValue - feeAmount;
 
 //     const userQuoteAccount = await LedgerAccount.findOne({ userId: session.id, assetId: quoteAsset, type: 'available' });
@@ -266,19 +281,15 @@ export async function getOpenTradesAction() {
 //       await updateAccountBalance(userQuoteAccount._id.toString(), costInCents);
 //     }
 
-//     // Ledger entries account for the fee split
 //     const entries = side === "buy" ? [
 //         { accountId: userQuoteAccount._id, direction: 'debit', amount: costInCents, balanceAfter: userQuoteAccount.cachedBalance - costInCents, assetId: quoteAsset },
 //         { accountId: sysQuoteAccount._id, direction: 'credit', amount: tradeValueInCents, balanceAfter: sysQuoteAccount.cachedBalance + tradeValueInCents, assetId: quoteAsset },
-//         // Fee entry (We credit system account again for the fee part)
 //         { accountId: sysQuoteAccount._id, direction: 'credit', amount: feeInCents, balanceAfter: sysQuoteAccount.cachedBalance + feeInCents, assetId: quoteAsset }, 
-        
 //         { accountId: userBaseAccount._id, direction: 'credit', amount: amountInCents, balanceAfter: userBaseAccount.cachedBalance + amountInCents, assetId: baseAsset },
 //         { accountId: sysBaseAccount._id, direction: 'debit', amount: amountInCents, balanceAfter: sysBaseAccount.cachedBalance - amountInCents, assetId: baseAsset },
 //       ] : [
 //         { accountId: userBaseAccount._id, direction: 'debit', amount: amountInCents, balanceAfter: userBaseAccount.cachedBalance - amountInCents, assetId: baseAsset },
 //         { accountId: sysBaseAccount._id, direction: 'credit', amount: amountInCents, balanceAfter: sysBaseAccount.cachedBalance + amountInCents, assetId: baseAsset },
-        
 //         { accountId: userQuoteAccount._id, direction: 'credit', amount: costInCents, balanceAfter: userQuoteAccount.cachedBalance + costInCents, assetId: quoteAsset },
 //         { accountId: sysQuoteAccount._id, direction: 'debit', amount: tradeValueInCents, balanceAfter: sysQuoteAccount.cachedBalance - tradeValueInCents, assetId: quoteAsset },
 //         { accountId: sysQuoteAccount._id, direction: 'debit', amount: feeInCents, balanceAfter: sysQuoteAccount.cachedBalance - feeInCents, assetId: quoteAsset },

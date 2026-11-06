@@ -1,0 +1,15 @@
+{
+  "Login": {
+    "logIn": "Iniciar Sesión",
+    "signUp": "Registrarse",
+    "welcomeBack": "Bienvenido de nuevo",
+    "createAccount": "Crear Cuenta",
+    "enterDetails": "Ingresa tus datos para acceder a tu cuenta.",
+    "joinExchange": "Únete al exchange para comenzar a operar.",
+    "fullName": "Nombre Completo",
+    "email": "Correo Electrónico",
+    "password": "Contraseña",
+    "tryDemo": "Probar Demo",
+    "orContinue": "O continúa con"
+  }
+}
