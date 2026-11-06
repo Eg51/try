@@ -1,25 +1,101 @@
 // app/actions/notifications.ts
 "use server";
 
-import type { AppNotification } from "@/app/dashboard/notifications/NotificationsClient";
+import connectDB from "@/lib/db";
+import Notification from "@/lib/models/Notification";
+import { getServerSession } from "@/lib/session";
+import { revalidatePath } from "next/cache";
 
-// 👇 Replace with your DB query. Shape must match AppNotification.
-export async function getNotifications(): Promise<AppNotification[]> {
-  // TODO: return db.notification.findMany({ where: { userId: session.user.id }, orderBy: { createdAt: "desc" } })
-  return [];
+export async function getUserNotifications() {
+  const session = await getServerSession();
+  if (!session) return [];
+
+  await connectDB();
+  const notifications = await Notification.find({ userId: session.id })
+    .sort({ createdAt: -1 })
+    .limit(50)
+    .lean();
+
+  return JSON.parse(JSON.stringify(notifications));
 }
 
 export async function markNotificationRead(id: string) {
-  // TODO: await db.notification.update({ where: { id, userId: session.user.id }, data: { read: true } })
-  return { success: true, id };
+  const session = await getServerSession();
+  if (!session) return { error: "Unauthorized" };
+
+  await connectDB();
+  await Notification.updateOne({ _id: id, userId: session.id }, { read: true });
+  revalidatePath("/dashboard/notifications");
+  return { success: true };
 }
 
 export async function markAllNotificationsRead() {
-  // TODO: await db.notification.updateMany({ where: { userId: session.user.id, read: false }, data: { read: true } })
+  const session = await getServerSession();
+  if (!session) return { error: "Unauthorized" };
+
+  await connectDB();
+  await Notification.updateMany({ userId: session.id, read: false }, { read: true });
+  revalidatePath("/dashboard/notifications");
   return { success: true };
 }
 
 export async function deleteNotification(id: string) {
-  // TODO: await db.notification.delete({ where: { id, userId: session.user.id } })
-  return { success: true, id };
+  const session = await getServerSession();
+  if (!session) return { error: "Unauthorized" };
+
+  await connectDB();
+  await Notification.deleteOne({ _id: id, userId: session.id });
+  revalidatePath("/dashboard/notifications");
+  return { success: true };
 }
+// // app/actions/notifications.ts
+// "use server";
+
+// import connectDB from "@/lib/db";
+// import Notification from "@/lib/models/Notification";
+// import { getServerSession } from "@/lib/session";
+// import { revalidatePath } from "next/cache";
+
+// export async function getUserNotifications() {
+//   const session = await getServerSession();
+//   if (!session) return [];
+
+//   await connectDB();
+//   const notifications = await Notification.find({ userId: session.id })
+//     .sort({ createdAt: -1 })
+//     .limit(50)
+//     .lean();
+
+//   // Serialize for client components (converts ObjectId and Date to strings)
+//   return JSON.parse(JSON.stringify(notifications));
+// }
+
+// export async function markNotificationRead(id: string) {
+//   const session = await getServerSession();
+//   if (!session) return { error: "Unauthorized" };
+
+//   await connectDB();
+//   await Notification.updateOne({ _id: id, userId: session.id }, { read: true });
+//   revalidatePath("/dashboard/notifications");
+//   return { success: true };
+// }
+
+// export async function markAllNotificationsRead() {
+//   const session = await getServerSession();
+//   if (!session) return { error: "Unauthorized" };
+
+//   await connectDB();
+//   await Notification.updateMany({ userId: session.id, read: false }, { read: true });
+//   revalidatePath("/dashboard/notifications");
+//   return { success: true };
+// }
+
+// export async function deleteNotification(id: string) {
+//   const session = await getServerSession();
+//   if (!session) return { error: "Unauthorized" };
+
+//   await connectDB();
+//   await Notification.deleteOne({ _id: id, userId: session.id });
+//   revalidatePath("/dashboard/notifications");
+//   return { success: true };
+// }

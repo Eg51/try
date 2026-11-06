@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
+import { useRouter } from "next/navigation"; // 👈 Imported Router
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import {
@@ -13,7 +14,12 @@ import {
   useNotifications,
   NotificationsProvider,
 } from "@/components/providers/NotificationsProvider";
-import { useTour } from "@/components/providers/TourProvider"; // 👈 Imported Tour Hook
+import { useTour } from "@/components/providers/TourProvider"; 
+import { 
+  markNotificationRead, 
+  markAllNotificationsRead, 
+  deleteNotification 
+} from "@/app/actions/notifications"; // 👈 Imported Server Actions
 
 export type NotificationType = "trade" | "system" | "promo" | "alert" | "wallet";
 
@@ -89,11 +95,11 @@ export default function NotificationsClient({
 function NotificationsInner() {
   const { notifications, unreadCount, markOneRead, markAllRead, removeOne } =
     useNotifications();
+  const router = useRouter(); // 👈 Initialize router
   const [activeFilter, setActiveFilter] = useState<FilterId>("all");
   const { openModal } = useDevModal();
-  const { setSteps } = useTour(); // 👈 Get setSteps from TourProvider
+  const { setSteps } = useTour(); 
 
-  // 👇 1. CONFIGURE TOUR STEPS
   useEffect(() => {
     setSteps([
       { id: "tour-notifications-header", title: "Notification Center", text: "Stay updated on your trades, wallet activity, and platform announcements here." },
@@ -130,17 +136,32 @@ function NotificationsInner() {
     return groups;
   }, [filtered]);
 
-  const handleMarkAll = () => {
+  const handleMarkAll = async () => {
     if (unreadCount === 0) return;
-    markAllRead();
+    
+    markAllRead(); // Optimistic UI update
+    await markAllNotificationsRead(); // Server update
     openModal("All caught up", "You've marked all notifications as read.", "success");
+    router.refresh(); // Refresh global header badge
+  };
+
+  const handleMarkRead = async (id: string) => {
+    markOneRead(id); // Optimistic UI update
+    await markNotificationRead(id); // Server update
+    router.refresh(); // Refresh global header badge
+  };
+
+  const handleDelete = async (id: string) => {
+    removeOne(id); // Optimistic UI update
+    await deleteNotification(id); // Server update
+    router.refresh(); // Refresh global header badge
   };
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 pb-12 pt-4 sm:pt-8">
       {/* HEADER CARD */}
       <motion.div
-        id="tour-notifications-header" // 👈 Added Tour ID
+        id="tour-notifications-header"
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         className="relative bg-white/60 dark:bg-[#0a0f0b]/60 backdrop-blur-xl border border-lime-500/20 p-5 sm:p-6 rounded-3xl shadow-[0_8px_32px_0_rgba(132,204,22,0.15)] dark:shadow-[0_8px_32px_0_rgba(0,0,0,0.5)] overflow-hidden"
@@ -167,7 +188,7 @@ function NotificationsInner() {
           </div>
 
           <button
-            id="tour-notifications-mark-all" // 👈 Added Tour ID
+            id="tour-notifications-mark-all"
             onClick={handleMarkAll}
             disabled={unreadCount === 0}
             className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#5d9e17] text-white rounded-xl text-sm font-bold hover:bg-[#4a7e12] transition-colors shadow-lg shadow-lime-600/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
@@ -179,7 +200,7 @@ function NotificationsInner() {
 
       {/* FILTER TABS */}
       <motion.div
-        id="tour-notifications-filters" // 👈 Added Tour ID
+        id="tour-notifications-filters"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.05 }}
@@ -235,7 +256,7 @@ function NotificationsInner() {
           </p>
         </motion.div>
       ) : (
-        <div id="tour-notifications-list" className="space-y-6"> {/* 👈 Added Tour ID */}
+        <div id="tour-notifications-list" className="space-y-6">
           {grouped.map((group) => (
             <div key={group.label} className="space-y-2">
               <h2 className="text-[10px] sm:text-xs font-bold text-lime-800/60 dark:text-lime-200/50 uppercase tracking-widest px-2">
@@ -247,12 +268,8 @@ function NotificationsInner() {
                     <NotificationRow
                       key={n.id}
                       notification={n}
-                      onRead={() => {
-                        markOneRead(n.id);
-                      }}
-                      onDelete={() => {
-                        removeOne(n.id);
-                      }}
+                      onRead={() => handleMarkRead(n.id)}
+                      onDelete={() => handleDelete(n.id)}
                     />
                   ))}
                 </AnimatePresence>
@@ -408,7 +425,7 @@ function NotificationRow({
 // // app/dashboard/notifications/NotificationsClient.tsx
 // "use client";
 
-// import { useState, useMemo } from "react";
+// import { useState, useMemo, useEffect } from "react";
 // import { motion, AnimatePresence } from "framer-motion";
 // import Link from "next/link";
 // import {
@@ -420,6 +437,7 @@ function NotificationRow({
 //   useNotifications,
 //   NotificationsProvider,
 // } from "@/components/providers/NotificationsProvider";
+// import { useTour } from "@/components/providers/TourProvider"; // 👈 Imported Tour Hook
 
 // export type NotificationType = "trade" | "system" | "promo" | "alert" | "wallet";
 
@@ -497,6 +515,17 @@ function NotificationRow({
 //     useNotifications();
 //   const [activeFilter, setActiveFilter] = useState<FilterId>("all");
 //   const { openModal } = useDevModal();
+//   const { setSteps } = useTour(); // 👈 Get setSteps from TourProvider
+
+//   // 👇 1. CONFIGURE TOUR STEPS
+//   useEffect(() => {
+//     setSteps([
+//       { id: "tour-notifications-header", title: "Notification Center", text: "Stay updated on your trades, wallet activity, and platform announcements here." },
+//       { id: "tour-notifications-mark-all", title: "Clear Your Badges", text: "Quickly mark all unread alerts as read with one click." },
+//       { id: "tour-notifications-filters", title: "Filter by Category", text: "Use these tabs to focus on specific types of notifications, like Trades or Wallet updates." },
+//       { id: "tour-notifications-list", title: "Actionable Alerts", text: "Click any notification to view details. You can also mark them as read or delete them using the icons on hover." },
+//     ]);
+//   }, [setSteps]);
 
 //   const filterCounts = useMemo(() => {
 //     const counts: Record<FilterId, number> = {
@@ -529,13 +558,13 @@ function NotificationRow({
 //     if (unreadCount === 0) return;
 //     markAllRead();
 //     openModal("All caught up", "You've marked all notifications as read.", "success");
-//     // TODO: await markAllNotificationsRead()
 //   };
 
 //   return (
 //     <div className="max-w-4xl mx-auto space-y-6 pb-12 pt-4 sm:pt-8">
 //       {/* HEADER CARD */}
 //       <motion.div
+//         id="tour-notifications-header" // 👈 Added Tour ID
 //         initial={{ opacity: 0, y: -20 }}
 //         animate={{ opacity: 1, y: 0 }}
 //         className="relative bg-white/60 dark:bg-[#0a0f0b]/60 backdrop-blur-xl border border-lime-500/20 p-5 sm:p-6 rounded-3xl shadow-[0_8px_32px_0_rgba(132,204,22,0.15)] dark:shadow-[0_8px_32px_0_rgba(0,0,0,0.5)] overflow-hidden"
@@ -562,6 +591,7 @@ function NotificationRow({
 //           </div>
 
 //           <button
+//             id="tour-notifications-mark-all" // 👈 Added Tour ID
 //             onClick={handleMarkAll}
 //             disabled={unreadCount === 0}
 //             className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#5d9e17] text-white rounded-xl text-sm font-bold hover:bg-[#4a7e12] transition-colors shadow-lg shadow-lime-600/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
@@ -573,6 +603,7 @@ function NotificationRow({
 
 //       {/* FILTER TABS */}
 //       <motion.div
+//         id="tour-notifications-filters" // 👈 Added Tour ID
 //         initial={{ opacity: 0, y: 10 }}
 //         animate={{ opacity: 1, y: 0 }}
 //         transition={{ delay: 0.05 }}
@@ -628,7 +659,7 @@ function NotificationRow({
 //           </p>
 //         </motion.div>
 //       ) : (
-//         <div className="space-y-6">
+//         <div id="tour-notifications-list" className="space-y-6"> {/* 👈 Added Tour ID */}
 //           {grouped.map((group) => (
 //             <div key={group.label} className="space-y-2">
 //               <h2 className="text-[10px] sm:text-xs font-bold text-lime-800/60 dark:text-lime-200/50 uppercase tracking-widest px-2">
@@ -642,11 +673,9 @@ function NotificationRow({
 //                       notification={n}
 //                       onRead={() => {
 //                         markOneRead(n.id);
-//                         // TODO: await markNotificationRead(n.id)
 //                       }}
 //                       onDelete={() => {
 //                         removeOne(n.id);
-//                         // TODO: await deleteNotification(n.id)
 //                       }}
 //                     />
 //                   ))}

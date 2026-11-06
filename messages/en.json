@@ -48,6 +48,19 @@
     "invalidAmountDesc": "Please enter a valid amount to trade.",
     "justNow": "Just now"
   },
+  "Login": {
+    "logIn": "Log In",
+    "signUp": "Sign Up",
+    "welcomeBack": "Welcome Back",
+    "createAccount": "Create Account",
+    "enterDetails": "Enter your details to access your account.",
+    "joinExchange": "Join the exchange to start trading.",
+    "fullName": "Full Name",
+    "email": "Email Address",
+    "password": "Password",
+    "tryDemo": "Try Demo",
+    "orContinue": "Or continue with"
+  },
   "Demo": {
     "goodMorning": "Good Morning",
     "goodAfternoon": "Good Afternoon",

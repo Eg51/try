@@ -57,7 +57,7 @@ export default function GlobalError({
             variant="secondary"
             className="w-full border-lime-500/30 dark:border-lime-500/20 bg-white/50 dark:bg-[#050806] hover:bg-white dark:hover:bg-[#121A14] text-lime-950 dark:text-white font-bold h-11 rounded-xl transition-transform active:scale-95 flex items-center justify-center gap-2"
           >
-            <ArrowLeft size={16} /> Return to Dashboard
+            <ArrowLeft size={16} /> Return
           </Button>
         </div>
       </motion.div>

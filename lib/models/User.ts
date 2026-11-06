@@ -1,5 +1,6 @@
 // lib/models/User.ts
 import mongoose, { Schema, Document, Model } from 'mongoose';
+import { encrypt, decrypt } from '../encryption';
 
 export interface IUser extends Document {
   firebaseUid: string;
@@ -13,7 +14,7 @@ export interface IUser extends Document {
   preferences: { 
     theme: 'dark' | 'light' | 'auto'; 
     notifications: boolean; 
-    language?: string; // 👈 ADDED
+    language?: string; 
   };
   xp: number;
   coins: number;
@@ -41,7 +42,7 @@ const UserSchema = new Schema<IUser>(
     preferences: {
       theme: { type: String, enum: ['dark', 'light', 'auto'], default: 'dark' },
       notifications: { type: Boolean, default: true },
-      language: { type: String, default: 'English (US)' }, // 👈 ADDED
+      language: { type: String, default: 'English (US)' },
     },
     xp: { type: Number, default: 0 },
     coins: { type: Number, default: 0 },
@@ -52,6 +53,19 @@ const UserSchema = new Schema<IUser>(
   },
   { timestamps: true }
 );
+
+// 👇 ENCRYPTION HOOKS (Using async to avoid 'next' type error)
+UserSchema.pre('save', async function () {
+  if (this.isModified('displayName')) {
+    this.displayName = encrypt(this.displayName);
+  }
+});
+
+UserSchema.post('init', function (doc: any) {
+  if (doc.displayName) {
+    doc.displayName = decrypt(doc.displayName);
+  }
+});
 
 UserSchema.set('toJSON', {
   transform: (doc, ret: any) => {
@@ -75,11 +89,15 @@ export default User;
 //   status: 'active' | 'suspended' | 'closed';
 //   kycTier: 0 | 1 | 2 | 3;
 //   displayCurrency: { assetId: string; selectedAt: Date; };
-//   preferences: { theme: 'dark' | 'light' | 'auto'; notifications: boolean; };
+//   preferences: { 
+//     theme: 'dark' | 'light' | 'auto'; 
+//     notifications: boolean; 
+//     language?: string; // 👈 ADDED
+//   };
 //   xp: number;
 //   coins: number;
 //   completedTasks: string[];
-//   claimedBadges: string[]; // ADDED THIS LINE
+//   claimedBadges: string[];
 //   favorites: string[];
 //   lastSeenAt: Date;
 //   createdAt: Date;
@@ -102,11 +120,12 @@ export default User;
 //     preferences: {
 //       theme: { type: String, enum: ['dark', 'light', 'auto'], default: 'dark' },
 //       notifications: { type: Boolean, default: true },
+//       language: { type: String, default: 'English (US)' }, // 👈 ADDED
 //     },
 //     xp: { type: Number, default: 0 },
 //     coins: { type: Number, default: 0 },
 //     completedTasks: { type: [String], default: [] },
-//     claimedBadges: { type: [String], default: [] }, // ADDED THIS LINE
+//     claimedBadges: { type: [String], default: [] },
 //     favorites: { type: [String], default: [] },
 //     lastSeenAt: { type: Date, default: Date.now },
 //   },
