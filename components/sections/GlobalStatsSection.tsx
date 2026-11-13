@@ -1,10 +1,10 @@
-
 "use client";
 
-import { m, useInView } from "framer-motion";
+import { motion, useInView } from "framer-motion";
 import { useRef, useState, useEffect } from "react";
 import { LineChart, Users, Globe } from "lucide-react";
 import { containerVariants, itemVariants } from "@/lib/animations";
+import { useTranslations } from "next-intl";
 
 const AnimatedCounter = ({ value, duration = 2 }: { value: string, duration?: number }) => {
   const ref = useRef(null);
@@ -37,57 +37,60 @@ const AnimatedCounter = ({ value, duration = 2 }: { value: string, duration?: nu
 };
 
 export default function GlobalStatsSection() {
+  const t = useTranslations("LandingStats");
+
   return (
-    <m.div 
+    <motion.div 
       variants={containerVariants} 
       initial="hidden" 
       whileInView="visible" 
       viewport={{ once: true }} 
       className="max-w-4xl mx-auto mt-24 justify-between sm:mt-32 grid grid-cols-1 sm:grid-cols-3 gap-8 sm:gap-12 place-items-center relative z-20"
     >
-      <m.div variants={itemVariants} className="flex flex-col items-center text-center">
+      <motion.div variants={itemVariants} className="flex flex-col items-center text-center">
         <div className="w-14 h-14 rounded-full bg-lime-100 dark:bg-lime-900/30 flex items-center justify-center mb-6 text-lime-600 dark:text-lime-400 shadow-sm border border-lime-500/10">
           <LineChart size={28} />
         </div>
         <h3 className="text-4xl md:text-5xl font-extrabold text-lime-950 dark:text-white mb-2 font-mono">
-          <AnimatedCounter value="$30B" />
+          <AnimatedCounter value={t("volumeValue")} />
         </h3>
         <p className="text-sm md:text-base font-semibold text-lime-800/60 dark:text-lime-200/50">
-          Digital Currency Exchanged
+          {t("volumeLabel")}
         </p>
-      </m.div>
+      </motion.div>
       
-      <m.div variants={itemVariants} className="flex flex-col items-center text-center">
+      <motion.div variants={itemVariants} className="flex flex-col items-center text-center">
         <div className="w-14 h-14 rounded-full bg-lime-100 dark:bg-lime-900/30 flex items-center justify-center mb-6 text-lime-600 dark:text-lime-400 shadow-sm border border-lime-500/10">
           <Users size={28} />
         </div>
         <h3 className="text-4xl md:text-5xl font-extrabold text-lime-950 dark:text-white mb-2 font-mono">
-          <AnimatedCounter value="10M+" />
+          <AnimatedCounter value={t("investorsValue")} />
         </h3>
         <p className="text-sm md:text-base font-semibold text-lime-800/60 dark:text-lime-200/50">
-          Trusted Wallets Investor
+          {t("investorsLabel")}
         </p>
-      </m.div>
+      </motion.div>
       
-      <m.div variants={itemVariants} className="flex flex-col items-center text-center">
+      <motion.div variants={itemVariants} className="flex flex-col items-center text-center">
         <div className="w-14 h-14 rounded-full bg-lime-100 dark:bg-lime-900/30 flex items-center justify-center mb-6 text-lime-600 dark:text-lime-400 shadow-sm border border-lime-500/10">
           <Globe size={28} />
         </div>
         <h3 className="text-4xl md:text-5xl font-extrabold text-lime-950 dark:text-white mb-2 font-mono">
-          <AnimatedCounter value="195" />
+          <AnimatedCounter value={t("countriesValue")} />
         </h3>
         <p className="text-sm md:text-base font-semibold text-lime-800/60 dark:text-lime-200/50">
-          Countries Supported
+          {t("countriesLabel")}
         </p>
-      </m.div>
-    </m.div>
+      </motion.div>
+    </motion.div>
   );
 }
 // "use client";
 
-// import { m, useInView, Variants } from "framer-motion";
+// import { m, useInView } from "framer-motion";
 // import { useRef, useState, useEffect } from "react";
 // import { LineChart, Users, Globe } from "lucide-react";
+// import { containerVariants, itemVariants } from "@/lib/animations";
 
 // const AnimatedCounter = ({ value, duration = 2 }: { value: string, duration?: number }) => {
 //   const ref = useRef(null);
@@ -117,16 +120,6 @@ export default function GlobalStatsSection() {
 //   }, [isInView, target, duration, isDecimal]);
 
 //   return <span ref={ref}>{prefix}{displayValue}{suffix}</span>;
-// };
-
-// const containerVariants: Variants = {
-//   hidden: { opacity: 0 },
-//   visible: { opacity: 1, transition: { staggerChildren: 0.15, delayChildren: 0.1 } },
-// };
-
-// const itemVariants: Variants = {
-//   hidden: { opacity: 0, y: 30 },
-//   visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
 // };
 
 // export default function GlobalStatsSection() {

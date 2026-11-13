@@ -6,6 +6,7 @@ import connectDB from "@/lib/db";
 import User from "@/lib/models/User";
 import { KycSubmission } from "@/lib/models/Kyc";
 import { revalidatePath } from "next/cache";
+import { createSystemNotification } from "@/lib/models/Notification";
 
 export async function submitKyc(tier: 1 | 2 | 3, formData: any) {
   const session = await getServerSession();
@@ -22,7 +23,6 @@ export async function submitKyc(tier: 1 | 2 | 3, formData: any) {
       rejectionReason: null,
     };
 
-    // 👇 ONLY UPDATE THE FIELDS RELEVANT TO THE TIER
     if (tier === 1) {
       updateData.personalDetails = {
         legalName: formData.legalName,
@@ -51,6 +51,14 @@ export async function submitKyc(tier: 1 | 2 | 3, formData: any) {
     );
 
     await User.findByIdAndUpdate(session.id, { kycTier: tier });
+
+    await createSystemNotification(
+      session.id,
+      "system",
+      "KYC Submitted",
+      "Your identity documents have been received and are pending review.",
+      "/dashboard/kyc"
+    );
     
     revalidatePath("/dashboard");
     revalidatePath("/dashboard/kyc");
@@ -82,6 +90,96 @@ export async function deleteKyc() {
     return { error: "Failed to delete" };
   }
 }
+
+
+
+// // app/actions/kyc.ts
+// "use server";
+
+// import { getServerSession } from "@/lib/session";
+// import connectDB from "@/lib/db";
+// import User from "@/lib/models/User";
+// import { KycSubmission } from "@/lib/models/Kyc";
+// import { revalidatePath } from "next/cache";
+
+// export async function submitKyc(tier: 1 | 2 | 3, formData: any) {
+//   const session = await getServerSession();
+//   if (!session) return { error: "Unauthorized" };
+
+//   await connectDB();
+
+//   try {
+//     const updateData: any = {
+//       status: 'pending',
+//       tierRequested: tier,
+//       submittedAt: new Date(),
+//       reviewedAt: null,
+//       rejectionReason: null,
+//     };
+
+//     // 👇 ONLY UPDATE THE FIELDS RELEVANT TO THE TIER
+//     if (tier === 1) {
+//       updateData.personalDetails = {
+//         legalName: formData.legalName,
+//         dob: formData.dob,
+//         phone: formData.phone,
+//         email: formData.email,
+//         street: formData.street,
+//         city: formData.city,
+//         state: formData.state,
+//         country: formData.country,
+//       };
+//       updateData["documents.idType"] = formData.idType;
+//       updateData["documents.idNumber"] = formData.idNumber || "";
+//       updateData["documents.selfieLivenessUrl"] = formData.selfieLivenessUrl || "";
+//       updateData["documents.idDocumentUrl"] = formData.idDocumentUrl || "";
+//     } else if (tier === 2) {
+//       updateData["documents.proofOfAddressUrl"] = formData.proofOfAddressUrl;
+//     } else if (tier === 3) {
+//       updateData["documents.sourceOfWealthUrl"] = formData.sourceOfWealthUrl;
+//     }
+
+//     await KycSubmission.findOneAndUpdate(
+//       { userId: session.id },
+//       { $set: updateData },
+//       { upsert: true, new: true }
+//     );
+
+//     await User.findByIdAndUpdate(session.id, { kycTier: tier });
+    
+//     revalidatePath("/dashboard");
+//     revalidatePath("/dashboard/kyc");
+    
+//     return { success: true };
+//   } catch (error) {
+//     console.error(error);
+//     return { error: "Failed to submit KYC." };
+//   }
+// }
+
+// export async function deleteKyc() {
+//   const session = await getServerSession();
+//   if (!session) return { error: "Unauthorized" };
+
+//   await connectDB();
+
+//   try {
+//     await KycSubmission.deleteMany({ userId: session.id });
+//     await User.findByIdAndUpdate(session.id, { kycTier: 0 });
+
+//     revalidatePath("/dashboard");
+//     revalidatePath("/dashboard/kyc");
+//     revalidatePath("/dashboard/profile");
+
+//     return { success: true };
+//   } catch (error) {
+//     console.error(error);
+//     return { error: "Failed to delete" };
+//   }
+// }
+
+
+
 // // app/actions/kyc.ts
 // "use server";
 

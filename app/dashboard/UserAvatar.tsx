@@ -2,9 +2,10 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { createPortal } from "react-dom"; // 👈 Imported Portal
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Camera, Trash2, Maximize2, X, Loader2, Sparkles, Image as ImageIcon, Sun, Sunrise, Sunset, Moon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { updateUserAvatar, deleteUserAvatar } from "@/app/actions/profile";
 import { useDevModal } from "@/components/providers/DevModalProvider";
 
@@ -15,6 +16,7 @@ export default function UserAvatar({
   initialImage: string; 
   userName: string;
 }) {
+  const t = useTranslations("UserAvatar");
   const [avatar, setAvatar] = useState(initialImage);
   const [isLoading, setIsLoading] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
@@ -23,7 +25,6 @@ export default function UserAvatar({
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [isCompressing, setIsCompressing] = useState(false);
 
-  // 👇 State for Portal coordinates
   const [mounted, setMounted] = useState(false);
   const [menuCoords, setMenuCoords] = useState({ top: 0, left: 0 });
 
@@ -35,7 +36,6 @@ export default function UserAvatar({
 
   useEffect(() => setMounted(true), []);
 
-  // 👇 Handle Click Outside for Portal Menu
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (
@@ -52,7 +52,6 @@ export default function UserAvatar({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showMenu, pendingFile]);
 
-  // 👇 Calculate position when opening
   const handleToggleMenu = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (isCompressing) return;
@@ -60,8 +59,8 @@ export default function UserAvatar({
     if (!showMenu && buttonRef.current) {
       const rect = buttonRef.current.getBoundingClientRect();
       setMenuCoords({
-        top: rect.bottom + window.scrollY + 8, // 8px gap below avatar
-        left: rect.left + rect.width / 2 + window.scrollX, // Center horizontally
+        top: rect.bottom + window.scrollY + 8,
+        left: rect.left + rect.width / 2 + window.scrollX,
       });
     }
     setShowMenu(!showMenu);
@@ -73,7 +72,7 @@ export default function UserAvatar({
     setShowMenu(false);
 
     if (!file.type.startsWith("image/")) {
-      openModal("Invalid File", "Please upload a valid image file.", "warning");
+      openModal(t("invalidTitle"), t("invalidDesc"), "warning");
       return;
     }
 
@@ -94,9 +93,9 @@ export default function UserAvatar({
       
       if (res.success) {
         setAvatar(base64String);
-        openModal("Success", "Profile picture updated successfully.", "success");
+        openModal(t("successTitle"), t("updateSuccess"), "success");
       } else {
-        openModal("Error", res.error || "Failed to update.", "error");
+        openModal(t("errorTitle"), res.error || t("updateError"), "error");
       }
       setIsLoading(false);
       setPendingFile(null);
@@ -150,9 +149,9 @@ export default function UserAvatar({
             const res = await updateUserAvatar(dataUrl);
             if (res.success) {
               setAvatar(dataUrl);
-              openModal("Success", "Image compressed and updated successfully.", "success");
+              openModal(t("successTitle"), t("compressSuccess"), "success");
             } else {
-              openModal("Error", res.error || "Failed to update.", "error");
+              openModal(t("errorTitle"), res.error || t("updateError"), "error");
             }
             setIsLoading(false);
             setPendingFile(null);
@@ -163,7 +162,7 @@ export default function UserAvatar({
         };
       };
     } catch (error) {
-      openModal("Compression Failed", "Failed to compress the image. Please try a different file.", "error");
+      openModal(t("compressErrorTitle"), t("compressErrorDesc"), "error");
       setIsCompressing(false);
     }
   };
@@ -174,9 +173,9 @@ export default function UserAvatar({
     if (res.success) {
       setAvatar("");
       setShowMenu(false);
-      openModal("Removed", "Profile picture has been removed.", "info");
+      openModal(t("removedTitle"), t("removedDesc"), "info");
     } else {
-      openModal("Error", res.error || "Failed to remove.", "error");
+      openModal(t("errorTitle"), res.error || t("removeError"), "error");
     }
     setIsLoading(false);
   };
@@ -185,18 +184,19 @@ export default function UserAvatar({
     <>
       <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handleFileChange} />
 
+      {/* 👇 Responsive scaling: 48px -> 56px (400px) -> 64px (640px) -> 80px (768px) */}
       <div 
         ref={buttonRef}
-        className="relative w-14 h-14 sm:w-20 sm:h-20 rounded-full cursor-pointer group shrink-0"
+        className="relative w-12 h-12 min-[400px]:w-14 min-[400px]:h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-full cursor-pointer group shrink-0"
         onClick={handleToggleMenu}
       >
-        <div className="w-full h-full rounded-full overflow-hidden border-[4px] border-white dark:border-[#1a261d] bg-lime-500/10 flex items-center justify-center shadow-xl">
+        <div className="w-full h-full rounded-full overflow-hidden border-[3px] sm:border-[4px] border-white dark:border-[#1a261d] bg-lime-500/10 flex items-center justify-center shadow-xl">
           {isLoading || isCompressing ? (
             <Loader2 className="animate-spin text-lime-500" size={24} />
           ) : avatar ? (
             <img src={avatar} alt="User Avatar" className="w-full h-full object-cover" />
           ) : (
-            <span className="text-xl sm:text-3xl font-extrabold text-lime-600 dark:text-lime-400">
+            <span className="text-lg min-[400px]:text-xl sm:text-2xl md:text-3xl font-extrabold text-lime-600 dark:text-lime-400">
               {userName.charAt(0).toUpperCase()}
             </span>
           )}
@@ -207,11 +207,9 @@ export default function UserAvatar({
         </div>
       </div>
 
-      {/* 👇 RENDER MENUS IN A PORTAL TO PREVENT CLIPPING */}
       {mounted && createPortal(
         <AnimatePresence>
           
-          {/* COMPRESSION PROMPT */}
           {pendingFile && !isCompressing && (
             <motion.div 
               ref={menuRef}
@@ -224,27 +222,26 @@ export default function UserAvatar({
                 left: menuCoords.left, 
                 transform: 'translateX(-50%)' 
               }}
-              className="w-52 bg-amber-500/10 dark:bg-amber-900/20 backdrop-blur-xl border border-amber-500/50 rounded-xl shadow-2xl p-3 z-[9999] flex flex-col items-center text-center"
+              className="w-52 max-w-[calc(100vw-2rem)] bg-amber-500/10 dark:bg-amber-900/20 backdrop-blur-xl border border-amber-500/50 rounded-xl shadow-2xl p-3 z-[9999] flex flex-col items-center text-center"
               onClick={(e) => e.stopPropagation()}
             >
               <ImageIcon className="text-amber-500 mb-1" size={24} />
               <p className="text-[10px] font-bold text-amber-600 dark:text-amber-400 mb-2">
-                Image is {(pendingFile.size / 1024 / 1024).toFixed(1)}MB (Max 100KB)
+                {t("sizeWarning", { size: (pendingFile.size / 1024 / 1024).toFixed(1) })}
               </p>
               <button
                 type="button"
                 onClick={handleCompress}
                 className="w-full py-1.5 bg-amber-500 text-white text-xs font-bold rounded-lg hover:bg-amber-600 transition-colors flex items-center justify-center gap-1.5 shadow-md"
               >
-                <Sparkles size={14} /> Compress & Save
+                <Sparkles size={14} /> {t("compressSave")}
               </button>
               <button type="button" onClick={() => setPendingFile(null)} className="mt-2 text-[10px] text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 underline">
-                Cancel
+                {t("cancel")}
               </button>
             </motion.div>
           )}
 
-          {/* MAIN DROPDOWN MENU */}
           {showMenu && !pendingFile && (
             <motion.div 
               ref={menuRef}
@@ -257,20 +254,20 @@ export default function UserAvatar({
                 left: menuCoords.left, 
                 transform: 'translateX(-50%)' 
               }}
-              className="w-40 bg-white/95 dark:bg-[#0a0f0b]/95 backdrop-blur-xl border border-lime-500/30 rounded-xl shadow-2xl p-2 z-[9999] flex flex-col gap-1"
+              className="w-40 max-w-[calc(100vw-2rem)] bg-white/95 dark:bg-[#0a0f0b]/95 backdrop-blur-xl border border-lime-500/30 rounded-xl shadow-2xl p-2 z-[9999] flex flex-col gap-1"
               onClick={(e) => e.stopPropagation()}
             >
               <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-2 p-2 hover:bg-lime-500/10 rounded-lg text-xs font-bold text-lime-950 dark:text-white transition-colors">
-                <Camera size={14} className="text-lime-500" /> Replace Image
+                <Camera size={14} className="text-lime-500 shrink-0" /> {t("replaceImage")}
               </button>
               
               {avatar && (
                 <>
                   <button onClick={() => { setIsPreviewOpen(true); setShowMenu(false); }} className="flex items-center gap-2 p-2 hover:bg-lime-500/10 rounded-lg text-xs font-bold text-lime-950 dark:text-white transition-colors">
-                    <Maximize2 size={14} className="text-blue-500" /> View Full
+                    <Maximize2 size={14} className="text-blue-500 shrink-0" /> {t("viewFull")}
                   </button>
                   <button onClick={handleDelete} className="flex items-center gap-2 p-2 hover:bg-red-500/10 rounded-lg text-xs font-bold text-red-500 transition-colors">
-                    <Trash2 size={14} /> Remove
+                    <Trash2 size={14} className="shrink-0" /> {t("remove")}
                   </button>
                 </>
               )}
@@ -280,16 +277,15 @@ export default function UserAvatar({
         document.body
       )}
 
-      {/* FULL SCREEN PREVIEW */}
       <AnimatePresence>
         {isPreviewOpen && (
           <motion.div 
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsPreviewOpen(false)}
-            className="fixed inset-0 z-[300] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 cursor-zoom-out"
+            className="fixed inset-0 z-[300] bg-black/90 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 cursor-zoom-out"
           >
-            <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }} className="relative max-w-2xl w-full max-h-[80vh] rounded-2xl overflow-hidden shadow-2xl border border-lime-500/30">
+            <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }} className="relative max-w-2xl w-full max-h-[70vh] sm:max-h-[80vh] rounded-2xl overflow-hidden shadow-2xl border border-lime-500/30">
               <img src={avatar} alt="Full Avatar" className="w-full h-full object-contain" />
-              <button onClick={() => setIsPreviewOpen(false)} className="absolute top-4 right-4 p-2 bg-black/50 text-white rounded-full hover:bg-black/80 transition-colors">
+              <button onClick={() => setIsPreviewOpen(false)} className="absolute top-2 right-2 sm:top-4 sm:right-4 p-2 bg-black/50 text-white rounded-full hover:bg-black/80 transition-colors">
                 <X size={20} />
               </button>
             </motion.div>
@@ -301,32 +297,47 @@ export default function UserAvatar({
 }
 
 export function TimeGreeting({ userName }: { userName: string }) {
+  const t = useTranslations("TimeGreeting");
   const [greeting, setGreeting] = useState({
-    text: "Good Evening",
+    text: "",
     icon: <Sun size={16} fill="currentColor" />,
     color: "text-amber-500"
   });
 
   useEffect(() => {
-    const hour = new Date().getHours();
-    if (hour >= 5 && hour < 12) {
-      setGreeting({ text: "Good Morning", icon: <Sunrise size={16} fill="currentColor" />, color: "text-amber-500" });
-    } else if (hour >= 12 && hour < 17) {
-      setGreeting({ text: "Good Afternoon", icon: <Sun size={16} fill="currentColor" />, color: "text-orange-500" });
-    } else if (hour >= 17 && hour < 21) {
-      setGreeting({ text: "Good Evening", icon: <Sunset size={16} fill="currentColor" />, color: "text-rose-500" });
-    } else {
-      setGreeting({ text: "Good Night", icon: <Moon size={16} fill="currentColor" />, color: "text-indigo-400" });
-    }
-  }, []);
+    const updateGreeting = () => {
+      const hour = new Date().getHours();
+      if (hour >= 5 && hour < 12) {
+        setGreeting({ text: t("morning"), icon: <Sunrise size={16} fill="currentColor" />, color: "text-amber-500" });
+      } else if (hour >= 12 && hour < 17) {
+        setGreeting({ text: t("afternoon"), icon: <Sun size={16} fill="currentColor" />, color: "text-orange-500" });
+      } else if (hour >= 17 && hour < 21) {
+        setGreeting({ text: t("evening"), icon: <Sunset size={16} fill="currentColor" />, color: "text-rose-500" });
+      } else {
+        setGreeting({ text: t("night"), icon: <Moon size={16} fill="currentColor" />, color: "text-indigo-400" });
+      }
+    };
+
+    updateGreeting();
+    const interval = setInterval(updateGreeting, 60000);
+    return () => clearInterval(interval);
+  }, [t]);
+
+  if (!greeting.text) {
+    return (
+      <div className="flex flex-col min-w-0">
+        <div className="h-3 w-24 bg-lime-500/10 rounded animate-pulse mb-1"></div>
+        <div className="h-6 w-32 bg-lime-500/10 rounded animate-pulse"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col min-w-0">
-      <div className="flex items-center gap-1 sm:gap-2 mb-0.5 whitespace-nowrap">
+      <div className="flex flex-wrap items-center gap-x-1 sm:gap-x-2 gap-y-0.5 mb-0.5">
         <span className="text-[10px] sm:text-xs font-bold text-lime-800/60 dark:text-lime-200/50 uppercase tracking-widest">
           {greeting.text},
         </span>
-        {/* Icon now sits to the right of the text */}
         <motion.div
           animate={{ y: [0, -2, 0] }}
           transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
@@ -336,12 +347,721 @@ export function TimeGreeting({ userName }: { userName: string }) {
         </motion.div>
       </div>
       
-      <h1 className="text-lg sm:text-2xl font-extrabold text-lime-950 dark:text-white tracking-tight truncate max-w-[80px] xs:max-w-[110px] sm:max-w-none">
+      <h1 className="text-base min-[400px]:text-lg sm:text-2xl font-extrabold text-lime-950 dark:text-white tracking-tight truncate max-w-[120px] min-[400px]:max-w-[160px] sm:max-w-none">
         {userName}
       </h1>
     </div>
   );
 }
+// // components/dashboard/UserAvatar.tsx
+// "use client";
+
+// import { useState, useRef, useEffect } from "react";
+// import { createPortal } from "react-dom";
+// import { motion, AnimatePresence } from "framer-motion";
+// import { Camera, Trash2, Maximize2, X, Loader2, Sparkles, Image as ImageIcon, Sun, Sunrise, Sunset, Moon } from "lucide-react";
+// import { useTranslations } from "next-intl";
+// import { updateUserAvatar, deleteUserAvatar } from "@/app/actions/profile";
+// import { useDevModal } from "@/components/providers/DevModalProvider";
+
+// export default function UserAvatar({ 
+//   initialImage, 
+//   userName 
+// }: { 
+//   initialImage: string; 
+//   userName: string;
+// }) {
+//   const t = useTranslations("UserAvatar");
+//   const [avatar, setAvatar] = useState(initialImage);
+//   const [isLoading, setIsLoading] = useState(false);
+//   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+//   const [showMenu, setShowMenu] = useState(false);
+  
+//   const [pendingFile, setPendingFile] = useState<File | null>(null);
+//   const [isCompressing, setIsCompressing] = useState(false);
+
+//   const [mounted, setMounted] = useState(false);
+//   const [menuCoords, setMenuCoords] = useState({ top: 0, left: 0 });
+
+//   const fileInputRef = useRef<HTMLInputElement>(null);
+//   const buttonRef = useRef<HTMLDivElement>(null);
+//   const menuRef = useRef<HTMLDivElement>(null);
+
+//   const { openModal } = useDevModal();
+
+//   useEffect(() => setMounted(true), []);
+
+//   useEffect(() => {
+//     function handleClickOutside(event: MouseEvent) {
+//       if (
+//         menuRef.current && !menuRef.current.contains(event.target as Node) &&
+//         buttonRef.current && !buttonRef.current.contains(event.target as Node)
+//       ) {
+//         setShowMenu(false);
+//         setPendingFile(null);
+//       }
+//     }
+//     if (showMenu || pendingFile) {
+//       document.addEventListener("mousedown", handleClickOutside);
+//     }
+//     return () => document.removeEventListener("mousedown", handleClickOutside);
+//   }, [showMenu, pendingFile]);
+
+//   const handleToggleMenu = (e: React.MouseEvent) => {
+//     e.stopPropagation();
+//     if (isCompressing) return;
+    
+//     if (!showMenu && buttonRef.current) {
+//       const rect = buttonRef.current.getBoundingClientRect();
+//       setMenuCoords({
+//         top: rect.bottom + window.scrollY + 8,
+//         left: rect.left + rect.width / 2 + window.scrollX,
+//       });
+//     }
+//     setShowMenu(!showMenu);
+//   };
+
+//   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+//     const file = e.target.files?.[0];
+//     if (!file) return;
+//     setShowMenu(false);
+
+//     if (!file.type.startsWith("image/")) {
+//       openModal(t("invalidTitle"), t("invalidDesc"), "warning");
+//       return;
+//     }
+
+//     if (file.size <= 100 * 1024) {
+//       processFile(file);
+//     } else {
+//       setPendingFile(file);
+//       if (fileInputRef.current) fileInputRef.current.value = "";
+//     }
+//   };
+
+//   const processFile = (file: File) => {
+//     setIsLoading(true);
+//     const reader = new FileReader();
+//     reader.onloadend = async () => {
+//       const base64String = reader.result as string;
+//       const res = await updateUserAvatar(base64String);
+      
+//       if (res.success) {
+//         setAvatar(base64String);
+//         openModal(t("successTitle"), t("updateSuccess"), "success");
+//       } else {
+//         openModal(t("errorTitle"), res.error || t("updateError"), "error");
+//       }
+//       setIsLoading(false);
+//       setPendingFile(null);
+//     };
+//     reader.readAsDataURL(file);
+//   };
+
+//   const handleCompress = async () => {
+//     if (!pendingFile) return;
+//     setIsCompressing(true);
+
+//     try {
+//       const reader = new FileReader();
+//       reader.readAsDataURL(pendingFile);
+//       reader.onload = (event) => {
+//         const img = new Image();
+//         img.src = event.target?.result as string;
+        
+//         img.onload = () => {
+//           const canvas = document.createElement("canvas");
+//           let width = img.width;
+//           let height = img.height;
+
+//           const MAX_DIMENSION = 400;
+//           if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
+//             if (width > height) {
+//               height *= MAX_DIMENSION / width;
+//               width = MAX_DIMENSION;
+//             } else {
+//               width *= MAX_DIMENSION / height;
+//               height = MAX_DIMENSION;
+//             }
+//           }
+
+//           canvas.width = width;
+//           canvas.height = height;
+//           const ctx = canvas.getContext("2d");
+//           ctx?.drawImage(img, 0, 0, width, height);
+
+//           let quality = 0.9;
+//           let dataUrl = canvas.toDataURL("image/jpeg", quality);
+//           const MAX_LENGTH = 136533;
+
+//           while (dataUrl.length > MAX_LENGTH && quality > 0.1) {
+//             quality -= 0.1;
+//             dataUrl = canvas.toDataURL("image/jpeg", quality);
+//           }
+
+//           const saveCompressed = async () => {
+//             setIsLoading(true);
+//             const res = await updateUserAvatar(dataUrl);
+//             if (res.success) {
+//               setAvatar(dataUrl);
+//               openModal(t("successTitle"), t("compressSuccess"), "success");
+//             } else {
+//               openModal(t("errorTitle"), res.error || t("updateError"), "error");
+//             }
+//             setIsLoading(false);
+//             setPendingFile(null);
+//             setIsCompressing(false);
+//           };
+          
+//           saveCompressed();
+//         };
+//       };
+//     } catch (error) {
+//       openModal(t("compressErrorTitle"), t("compressErrorDesc"), "error");
+//       setIsCompressing(false);
+//     }
+//   };
+
+//   const handleDelete = async () => {
+//     setIsLoading(true);
+//     const res = await deleteUserAvatar();
+//     if (res.success) {
+//       setAvatar("");
+//       setShowMenu(false);
+//       openModal(t("removedTitle"), t("removedDesc"), "info");
+//     } else {
+//       openModal(t("errorTitle"), res.error || t("removeError"), "error");
+//     }
+//     setIsLoading(false);
+//   };
+
+//   return (
+//     <>
+//       <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handleFileChange} />
+
+//       {/* 👇 ENHANCED RESPONSIVENESS: Smoother scaling across breakpoints */}
+//       <div 
+//         ref={buttonRef}
+//         className="relative w-12 h-12 xs:w-14 xs:h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-full cursor-pointer group shrink-0"
+//         onClick={handleToggleMenu}
+//       >
+//         <div className="w-full h-full rounded-full overflow-hidden border-[3px] sm:border-[4px] border-white dark:border-[#1a261d] bg-lime-500/10 flex items-center justify-center shadow-xl">
+//           {isLoading || isCompressing ? (
+//             <Loader2 className="animate-spin text-lime-500" size={24} />
+//           ) : avatar ? (
+//             <img src={avatar} alt="User Avatar" className="w-full h-full object-cover" />
+//           ) : (
+//             <span className="text-lg xs:text-xl sm:text-2xl md:text-3xl font-extrabold text-lime-600 dark:text-lime-400">
+//               {userName.charAt(0).toUpperCase()}
+//             </span>
+//           )}
+//         </div>
+
+//         <div className={`absolute inset-0 bg-black/40 rounded-full transition-opacity flex items-center justify-center pointer-events-none ${showMenu || isCompressing ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+//           <Camera className="text-white" size={20} />
+//         </div>
+//       </div>
+
+//       {mounted && createPortal(
+//         <AnimatePresence>
+          
+//           {pendingFile && !isCompressing && (
+//             <motion.div 
+//               ref={menuRef}
+//               initial={{ opacity: 0, y: 10, scale: 0.95 }} 
+//               animate={{ opacity: 1, y: 0, scale: 1 }} 
+//               exit={{ opacity: 0, y: 10, scale: 0.95 }}
+//               style={{ 
+//                 position: 'absolute', 
+//                 top: menuCoords.top, 
+//                 left: menuCoords.left, 
+//                 transform: 'translateX(-50%)' 
+//               }}
+//               /* 👇 ENHANCED: Protected against viewport overflow on tiny screens */
+//               className="w-52 max-w-[calc(100vw-2rem)] bg-amber-500/10 dark:bg-amber-900/20 backdrop-blur-xl border border-amber-500/50 rounded-xl shadow-2xl p-3 z-[9999] flex flex-col items-center text-center"
+//               onClick={(e) => e.stopPropagation()}
+//             >
+//               <ImageIcon className="text-amber-500 mb-1" size={24} />
+//               <p className="text-[10px] font-bold text-amber-600 dark:text-amber-400 mb-2">
+//                 {t("sizeWarning", { size: (pendingFile.size / 1024 / 1024).toFixed(1) })}
+//               </p>
+//               <button
+//                 type="button"
+//                 onClick={handleCompress}
+//                 className="w-full py-1.5 bg-amber-500 text-white text-xs font-bold rounded-lg hover:bg-amber-600 transition-colors flex items-center justify-center gap-1.5 shadow-md"
+//               >
+//                 <Sparkles size={14} /> {t("compressSave")}
+//               </button>
+//               <button type="button" onClick={() => setPendingFile(null)} className="mt-2 text-[10px] text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 underline">
+//                 {t("cancel")}
+//               </button>
+//             </motion.div>
+//           )}
+
+//           {showMenu && !pendingFile && (
+//             <motion.div 
+//               ref={menuRef}
+//               initial={{ opacity: 0, y: 10, scale: 0.95 }} 
+//               animate={{ opacity: 1, y: 0, scale: 1 }} 
+//               exit={{ opacity: 0, y: 10, scale: 0.95 }}
+//               style={{ 
+//                 position: 'absolute', 
+//                 top: menuCoords.top, 
+//                 left: menuCoords.left, 
+//                 transform: 'translateX(-50%)' 
+//               }}
+//               /* 👇 ENHANCED: Protected against viewport overflow */
+//               className="w-40 max-w-[calc(100vw-2rem)] bg-white/95 dark:bg-[#0a0f0b]/95 backdrop-blur-xl border border-lime-500/30 rounded-xl shadow-2xl p-2 z-[9999] flex flex-col gap-1"
+//               onClick={(e) => e.stopPropagation()}
+//             >
+//               <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-2 p-2 hover:bg-lime-500/10 rounded-lg text-xs font-bold text-lime-950 dark:text-white transition-colors">
+//                 <Camera size={14} className="text-lime-500 shrink-0" /> {t("replaceImage")}
+//               </button>
+              
+//               {avatar && (
+//                 <>
+//                   <button onClick={() => { setIsPreviewOpen(true); setShowMenu(false); }} className="flex items-center gap-2 p-2 hover:bg-lime-500/10 rounded-lg text-xs font-bold text-lime-950 dark:text-white transition-colors">
+//                     <Maximize2 size={14} className="text-blue-500 shrink-0" /> {t("viewFull")}
+//                   </button>
+//                   <button onClick={handleDelete} className="flex items-center gap-2 p-2 hover:bg-red-500/10 rounded-lg text-xs font-bold text-red-500 transition-colors">
+//                     <Trash2 size={14} className="shrink-0" /> {t("remove")}
+//                   </button>
+//                 </>
+//               )}
+//             </motion.div>
+//           )}
+//         </AnimatePresence>,
+//         document.body
+//       )}
+
+//       <AnimatePresence>
+//         {isPreviewOpen && (
+//           <motion.div 
+//             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsPreviewOpen(false)}
+//             /* 👇 ENHANCED: Tighter padding on mobile */
+//             className="fixed inset-0 z-[300] bg-black/90 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 cursor-zoom-out"
+//           >
+//             <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }} className="relative max-w-2xl w-full max-h-[70vh] sm:max-h-[80vh] rounded-2xl overflow-hidden shadow-2xl border border-lime-500/30">
+//               <img src={avatar} alt="Full Avatar" className="w-full h-full object-contain" />
+//               <button onClick={() => setIsPreviewOpen(false)} className="absolute top-2 right-2 sm:top-4 sm:right-4 p-2 bg-black/50 text-white rounded-full hover:bg-black/80 transition-colors">
+//                 <X size={20} />
+//               </button>
+//             </motion.div>
+//           </motion.div>
+//         )}
+//       </AnimatePresence>
+//     </>
+//   );
+// }
+
+// export function TimeGreeting({ userName }: { userName: string }) {
+//   const t = useTranslations("TimeGreeting");
+//   const [greeting, setGreeting] = useState({
+//     text: "",
+//     icon: <Sun size={16} fill="currentColor" />,
+//     color: "text-amber-500"
+//   });
+
+//   useEffect(() => {
+//     const updateGreeting = () => {
+//       const hour = new Date().getHours();
+//       if (hour >= 5 && hour < 12) {
+//         setGreeting({ text: t("morning"), icon: <Sunrise size={16} fill="currentColor" />, color: "text-amber-500" });
+//       } else if (hour >= 12 && hour < 17) {
+//         setGreeting({ text: t("afternoon"), icon: <Sun size={16} fill="currentColor" />, color: "text-orange-500" });
+//       } else if (hour >= 17 && hour < 21) {
+//         setGreeting({ text: t("evening"), icon: <Sunset size={16} fill="currentColor" />, color: "text-rose-500" });
+//       } else {
+//         setGreeting({ text: t("night"), icon: <Moon size={16} fill="currentColor" />, color: "text-indigo-400" });
+//       }
+//     };
+
+//     updateGreeting();
+//     const interval = setInterval(updateGreeting, 60000);
+//     return () => clearInterval(interval);
+//   }, [t]);
+
+//   // 👇 ENHANCED: Skeleton matches the exact dimensions to prevent layout shift
+//   if (!greeting.text) {
+//     return (
+//       <div className="flex flex-col min-w-0">
+//         <div className="h-3 w-24 bg-lime-500/10 rounded animate-pulse mb-1"></div>
+//         <div className="h-6 w-32 bg-lime-500/10 rounded animate-pulse"></div>
+//       </div>
+//     );
+//   }
+
+//   return (
+//     <div className="flex flex-col min-w-0">
+//       {/* 👇 ENHANCED: Removed whitespace-nowrap, added flex-wrap to prevent clipping */}
+//       <div className="flex flex-wrap items-center gap-x-1 sm:gap-x-2 gap-y-0.5 mb-0.5">
+//         <span className="text-[10px] sm:text-xs font-bold text-lime-800/60 dark:text-lime-200/50 uppercase tracking-widest">
+//           {greeting.text},
+//         </span>
+//         <motion.div
+//           animate={{ y: [0, -2, 0] }}
+//           transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
+//           className={`${greeting.color} shrink-0`}
+//         >
+//           {greeting.icon}
+//         </motion.div>
+//       </div>
+      
+//       {/* 👇 ENHANCED: Wider max-w on mobile for better name visibility */}
+//       <h1 className="text-base xs:text-lg sm:text-2xl font-extrabold text-lime-950 dark:text-white tracking-tight truncate max-w-[120px] xs:max-w-[160px] sm:max-w-none">
+//         {userName}
+//       </h1>
+//     </div>
+//   );
+// }
+
+// // components/dashboard/UserAvatar.tsx
+// "use client";
+
+// import { useState, useRef, useEffect } from "react";
+// import { createPortal } from "react-dom"; // 👈 Imported Portal
+// import { motion, AnimatePresence } from "framer-motion";
+// import { Camera, Trash2, Maximize2, X, Loader2, Sparkles, Image as ImageIcon, Sun, Sunrise, Sunset, Moon } from "lucide-react";
+// import { updateUserAvatar, deleteUserAvatar } from "@/app/actions/profile";
+// import { useDevModal } from "@/components/providers/DevModalProvider";
+
+// export default function UserAvatar({ 
+//   initialImage, 
+//   userName 
+// }: { 
+//   initialImage: string; 
+//   userName: string;
+// }) {
+//   const [avatar, setAvatar] = useState(initialImage);
+//   const [isLoading, setIsLoading] = useState(false);
+//   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+//   const [showMenu, setShowMenu] = useState(false);
+  
+//   const [pendingFile, setPendingFile] = useState<File | null>(null);
+//   const [isCompressing, setIsCompressing] = useState(false);
+
+//   // 👇 State for Portal coordinates
+//   const [mounted, setMounted] = useState(false);
+//   const [menuCoords, setMenuCoords] = useState({ top: 0, left: 0 });
+
+//   const fileInputRef = useRef<HTMLInputElement>(null);
+//   const buttonRef = useRef<HTMLDivElement>(null);
+//   const menuRef = useRef<HTMLDivElement>(null);
+
+//   const { openModal } = useDevModal();
+
+//   useEffect(() => setMounted(true), []);
+
+//   // 👇 Handle Click Outside for Portal Menu
+//   useEffect(() => {
+//     function handleClickOutside(event: MouseEvent) {
+//       if (
+//         menuRef.current && !menuRef.current.contains(event.target as Node) &&
+//         buttonRef.current && !buttonRef.current.contains(event.target as Node)
+//       ) {
+//         setShowMenu(false);
+//         setPendingFile(null);
+//       }
+//     }
+//     if (showMenu || pendingFile) {
+//       document.addEventListener("mousedown", handleClickOutside);
+//     }
+//     return () => document.removeEventListener("mousedown", handleClickOutside);
+//   }, [showMenu, pendingFile]);
+
+//   // 👇 Calculate position when opening
+//   const handleToggleMenu = (e: React.MouseEvent) => {
+//     e.stopPropagation();
+//     if (isCompressing) return;
+    
+//     if (!showMenu && buttonRef.current) {
+//       const rect = buttonRef.current.getBoundingClientRect();
+//       setMenuCoords({
+//         top: rect.bottom + window.scrollY + 8, // 8px gap below avatar
+//         left: rect.left + rect.width / 2 + window.scrollX, // Center horizontally
+//       });
+//     }
+//     setShowMenu(!showMenu);
+//   };
+
+//   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+//     const file = e.target.files?.[0];
+//     if (!file) return;
+//     setShowMenu(false);
+
+//     if (!file.type.startsWith("image/")) {
+//       openModal("Invalid File", "Please upload a valid image file.", "warning");
+//       return;
+//     }
+
+//     if (file.size <= 100 * 1024) {
+//       processFile(file);
+//     } else {
+//       setPendingFile(file);
+//       if (fileInputRef.current) fileInputRef.current.value = "";
+//     }
+//   };
+
+//   const processFile = (file: File) => {
+//     setIsLoading(true);
+//     const reader = new FileReader();
+//     reader.onloadend = async () => {
+//       const base64String = reader.result as string;
+//       const res = await updateUserAvatar(base64String);
+      
+//       if (res.success) {
+//         setAvatar(base64String);
+//         openModal("Success", "Profile picture updated successfully.", "success");
+//       } else {
+//         openModal("Error", res.error || "Failed to update.", "error");
+//       }
+//       setIsLoading(false);
+//       setPendingFile(null);
+//     };
+//     reader.readAsDataURL(file);
+//   };
+
+//   const handleCompress = async () => {
+//     if (!pendingFile) return;
+//     setIsCompressing(true);
+
+//     try {
+//       const reader = new FileReader();
+//       reader.readAsDataURL(pendingFile);
+//       reader.onload = (event) => {
+//         const img = new Image();
+//         img.src = event.target?.result as string;
+        
+//         img.onload = () => {
+//           const canvas = document.createElement("canvas");
+//           let width = img.width;
+//           let height = img.height;
+
+//           const MAX_DIMENSION = 400;
+//           if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
+//             if (width > height) {
+//               height *= MAX_DIMENSION / width;
+//               width = MAX_DIMENSION;
+//             } else {
+//               width *= MAX_DIMENSION / height;
+//               height = MAX_DIMENSION;
+//             }
+//           }
+
+//           canvas.width = width;
+//           canvas.height = height;
+//           const ctx = canvas.getContext("2d");
+//           ctx?.drawImage(img, 0, 0, width, height);
+
+//           let quality = 0.9;
+//           let dataUrl = canvas.toDataURL("image/jpeg", quality);
+//           const MAX_LENGTH = 136533;
+
+//           while (dataUrl.length > MAX_LENGTH && quality > 0.1) {
+//             quality -= 0.1;
+//             dataUrl = canvas.toDataURL("image/jpeg", quality);
+//           }
+
+//           const saveCompressed = async () => {
+//             setIsLoading(true);
+//             const res = await updateUserAvatar(dataUrl);
+//             if (res.success) {
+//               setAvatar(dataUrl);
+//               openModal("Success", "Image compressed and updated successfully.", "success");
+//             } else {
+//               openModal("Error", res.error || "Failed to update.", "error");
+//             }
+//             setIsLoading(false);
+//             setPendingFile(null);
+//             setIsCompressing(false);
+//           };
+          
+//           saveCompressed();
+//         };
+//       };
+//     } catch (error) {
+//       openModal("Compression Failed", "Failed to compress the image. Please try a different file.", "error");
+//       setIsCompressing(false);
+//     }
+//   };
+
+//   const handleDelete = async () => {
+//     setIsLoading(true);
+//     const res = await deleteUserAvatar();
+//     if (res.success) {
+//       setAvatar("");
+//       setShowMenu(false);
+//       openModal("Removed", "Profile picture has been removed.", "info");
+//     } else {
+//       openModal("Error", res.error || "Failed to remove.", "error");
+//     }
+//     setIsLoading(false);
+//   };
+
+//   return (
+//     <>
+//       <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handleFileChange} />
+
+//       <div 
+//         ref={buttonRef}
+//         className="relative w-14 h-14 sm:w-20 sm:h-20 rounded-full cursor-pointer group shrink-0"
+//         onClick={handleToggleMenu}
+//       >
+//         <div className="w-full h-full rounded-full overflow-hidden border-[4px] border-white dark:border-[#1a261d] bg-lime-500/10 flex items-center justify-center shadow-xl">
+//           {isLoading || isCompressing ? (
+//             <Loader2 className="animate-spin text-lime-500" size={24} />
+//           ) : avatar ? (
+//             <img src={avatar} alt="User Avatar" className="w-full h-full object-cover" />
+//           ) : (
+//             <span className="text-xl sm:text-3xl font-extrabold text-lime-600 dark:text-lime-400">
+//               {userName.charAt(0).toUpperCase()}
+//             </span>
+//           )}
+//         </div>
+
+//         <div className={`absolute inset-0 bg-black/40 rounded-full transition-opacity flex items-center justify-center pointer-events-none ${showMenu || isCompressing ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+//           <Camera className="text-white" size={20} />
+//         </div>
+//       </div>
+
+//       {/* 👇 RENDER MENUS IN A PORTAL TO PREVENT CLIPPING */}
+//       {mounted && createPortal(
+//         <AnimatePresence>
+          
+//           {/* COMPRESSION PROMPT */}
+//           {pendingFile && !isCompressing && (
+//             <motion.div 
+//               ref={menuRef}
+//               initial={{ opacity: 0, y: 10, scale: 0.95 }} 
+//               animate={{ opacity: 1, y: 0, scale: 1 }} 
+//               exit={{ opacity: 0, y: 10, scale: 0.95 }}
+//               style={{ 
+//                 position: 'absolute', 
+//                 top: menuCoords.top, 
+//                 left: menuCoords.left, 
+//                 transform: 'translateX(-50%)' 
+//               }}
+//               className="w-52 bg-amber-500/10 dark:bg-amber-900/20 backdrop-blur-xl border border-amber-500/50 rounded-xl shadow-2xl p-3 z-[9999] flex flex-col items-center text-center"
+//               onClick={(e) => e.stopPropagation()}
+//             >
+//               <ImageIcon className="text-amber-500 mb-1" size={24} />
+//               <p className="text-[10px] font-bold text-amber-600 dark:text-amber-400 mb-2">
+//                 Image is {(pendingFile.size / 1024 / 1024).toFixed(1)}MB (Max 100KB)
+//               </p>
+//               <button
+//                 type="button"
+//                 onClick={handleCompress}
+//                 className="w-full py-1.5 bg-amber-500 text-white text-xs font-bold rounded-lg hover:bg-amber-600 transition-colors flex items-center justify-center gap-1.5 shadow-md"
+//               >
+//                 <Sparkles size={14} /> Compress & Save
+//               </button>
+//               <button type="button" onClick={() => setPendingFile(null)} className="mt-2 text-[10px] text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 underline">
+//                 Cancel
+//               </button>
+//             </motion.div>
+//           )}
+
+//           {/* MAIN DROPDOWN MENU */}
+//           {showMenu && !pendingFile && (
+//             <motion.div 
+//               ref={menuRef}
+//               initial={{ opacity: 0, y: 10, scale: 0.95 }} 
+//               animate={{ opacity: 1, y: 0, scale: 1 }} 
+//               exit={{ opacity: 0, y: 10, scale: 0.95 }}
+//               style={{ 
+//                 position: 'absolute', 
+//                 top: menuCoords.top, 
+//                 left: menuCoords.left, 
+//                 transform: 'translateX(-50%)' 
+//               }}
+//               className="w-40 bg-white/95 dark:bg-[#0a0f0b]/95 backdrop-blur-xl border border-lime-500/30 rounded-xl shadow-2xl p-2 z-[9999] flex flex-col gap-1"
+//               onClick={(e) => e.stopPropagation()}
+//             >
+//               <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-2 p-2 hover:bg-lime-500/10 rounded-lg text-xs font-bold text-lime-950 dark:text-white transition-colors">
+//                 <Camera size={14} className="text-lime-500" /> Replace Image
+//               </button>
+              
+//               {avatar && (
+//                 <>
+//                   <button onClick={() => { setIsPreviewOpen(true); setShowMenu(false); }} className="flex items-center gap-2 p-2 hover:bg-lime-500/10 rounded-lg text-xs font-bold text-lime-950 dark:text-white transition-colors">
+//                     <Maximize2 size={14} className="text-blue-500" /> View Full
+//                   </button>
+//                   <button onClick={handleDelete} className="flex items-center gap-2 p-2 hover:bg-red-500/10 rounded-lg text-xs font-bold text-red-500 transition-colors">
+//                     <Trash2 size={14} /> Remove
+//                   </button>
+//                 </>
+//               )}
+//             </motion.div>
+//           )}
+//         </AnimatePresence>,
+//         document.body
+//       )}
+
+//       {/* FULL SCREEN PREVIEW */}
+//       <AnimatePresence>
+//         {isPreviewOpen && (
+//           <motion.div 
+//             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsPreviewOpen(false)}
+//             className="fixed inset-0 z-[300] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 cursor-zoom-out"
+//           >
+//             <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }} className="relative max-w-2xl w-full max-h-[80vh] rounded-2xl overflow-hidden shadow-2xl border border-lime-500/30">
+//               <img src={avatar} alt="Full Avatar" className="w-full h-full object-contain" />
+//               <button onClick={() => setIsPreviewOpen(false)} className="absolute top-4 right-4 p-2 bg-black/50 text-white rounded-full hover:bg-black/80 transition-colors">
+//                 <X size={20} />
+//               </button>
+//             </motion.div>
+//           </motion.div>
+//         )}
+//       </AnimatePresence>
+//     </>
+//   );
+// }
+
+// export function TimeGreeting({ userName }: { userName: string }) {
+//   const [greeting, setGreeting] = useState({
+//     text: "Good Evening",
+//     icon: <Sun size={16} fill="currentColor" />,
+//     color: "text-amber-500"
+//   });
+
+//   useEffect(() => {
+//     const hour = new Date().getHours();
+//     if (hour >= 5 && hour < 12) {
+//       setGreeting({ text: "Good Morning", icon: <Sunrise size={16} fill="currentColor" />, color: "text-amber-500" });
+//     } else if (hour >= 12 && hour < 17) {
+//       setGreeting({ text: "Good Afternoon", icon: <Sun size={16} fill="currentColor" />, color: "text-orange-500" });
+//     } else if (hour >= 17 && hour < 21) {
+//       setGreeting({ text: "Good Evening", icon: <Sunset size={16} fill="currentColor" />, color: "text-rose-500" });
+//     } else {
+//       setGreeting({ text: "Good Night", icon: <Moon size={16} fill="currentColor" />, color: "text-indigo-400" });
+//     }
+//   }, []);
+
+//   return (
+//     <div className="flex flex-col min-w-0">
+//       <div className="flex items-center gap-1 sm:gap-2 mb-0.5 whitespace-nowrap">
+//         <span className="text-[10px] sm:text-xs font-bold text-lime-800/60 dark:text-lime-200/50 uppercase tracking-widest">
+//           {greeting.text},
+//         </span>
+//         {/* Icon now sits to the right of the text */}
+//         <motion.div
+//           animate={{ y: [0, -2, 0] }}
+//           transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
+//           className={`${greeting.color} shrink-0`}
+//         >
+//           {greeting.icon}
+//         </motion.div>
+//       </div>
+      
+//       <h1 className="text-lg sm:text-2xl font-extrabold text-lime-950 dark:text-white tracking-tight truncate max-w-[80px] xs:max-w-[110px] sm:max-w-none">
+//         {userName}
+//       </h1>
+//     </div>
+//   );
+// }
+
+
+
 // // components/dashboard/UserAvatar.tsx
 // "use client";
 

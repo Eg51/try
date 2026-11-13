@@ -6,8 +6,10 @@ import HeaderActions from "@/components/HeaderActions";
 import NotificationButton from "@/app/dashboard/notifications/NotificationButton";
 import AnimatedSearch from "@/app/dashboard/AnimatedSearch";
 import WatermarkBackground from "@/components/WatermarkBackground";
+import { NotificationsProvider } from "@/components/providers/NotificationsProvider"; 
+import { getUserNotifications } from "@/app/actions/notifications"; 
 
-export const instant = false; // 👈 this route is auth-gated, block prerendering
+export const instant = false;
 
 export default async function MarketsLayout({ children }: { children: React.ReactNode }) {
   await connection();
@@ -15,53 +17,74 @@ export default async function MarketsLayout({ children }: { children: React.Reac
   const session = await getServerSession();
   if (!session) redirect("/login");
 
+  const rawNotifs = await getUserNotifications();
+  const mappedNotifs = rawNotifs.map((n: any) => ({
+    id: n._id,
+    type: n.type,
+    title: n.title,
+    message: n.message,
+    timestamp: n.createdAt,
+    read: n.read,
+    href: n.href,
+    meta: n.meta,
+  }));
+
   return (
-    <div className="relative min-h-screen bg-[#f0fdf4] dark:bg-[#050806] text-lime-950 dark:text-white overflow-hidden font-sans">
-      <WatermarkBackground />
+    <NotificationsProvider initial={mappedNotifs}>
+      <div className="relative min-h-screen bg-[#f0fdf4] dark:bg-[#050806] text-lime-950 dark:text-white overflow-hidden font-sans">
+        <WatermarkBackground />
 
-      <div className="fixed top-4 left-4 right-4 sm:top-6 sm:left-6 sm:right-6 z-50 pointer-events-none">
-        <div className="pointer-events-auto flex items-center justify-between gap-2 sm:gap-4 bg-white/60 dark:bg-[#121A14]/60 backdrop-blur-xl border border-lime-500/20 shadow-[0_8px_32px_0_rgba(132,204,22,0.15)] dark:shadow-[0_8px_32px_0_rgba(0,0,0,0.5)] px-3 py-2 sm:px-4 sm:py-2.5 rounded-full w-full">
-          <div className="flex-1 max-w-md">
-            <AnimatedSearch />
-          </div>
+        <div className="fixed top-4 left-4 right-4 sm:top-6 sm:left-6 sm:right-6 z-50 pointer-events-none">
+          <div className="pointer-events-auto flex items-center justify-between gap-2 sm:gap-4 bg-white/60 dark:bg-[#121A14]/60 backdrop-blur-xl border border-lime-500/20 shadow-[0_8px_32px_0_rgba(132,204,22,0.15)] dark:shadow-[0_8px_32px_0_rgba(0,0,0,0.5)] px-3 py-2 sm:px-4 sm:py-2.5 rounded-full w-full">
+            <div className="flex-1 max-w-md">
+              <AnimatedSearch />
+            </div>
 
-          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-            <NotificationButton type="urgent" />
-            <div className="h-5 sm:h-6 w-px bg-lime-500/20"></div>
-            <HeaderActions hideNotifications={true} kycTier={session.tier || 0} />
+            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+              <NotificationButton /> 
+              <div className="h-5 sm:h-6 w-px bg-lime-500/20"></div>
+              <HeaderActions hideNotifications={true} kycTier={session.tier || 0} />
+            </div>
           </div>
         </div>
-      </div>
 
-      <main className="relative z-10 h-screen overflow-y-auto pt-24 pb-10 px-4 sm:px-8">
-        {children}
-      </main>
-    </div>
+        <main className="relative z-10 h-screen overflow-y-auto pt-24 pb-10 px-4 sm:px-8">
+          {children}
+        </main>
+      </div>
+    </NotificationsProvider>
   );
 }
+
+
+
+
+
+
+
 // // app/markets/layout.tsx
 // import { getServerSession } from "@/lib/session";
 // import { redirect } from "next/navigation";
 // import { connection } from "next/server";
 // import HeaderActions from "@/components/HeaderActions";
-// import NotificationButton from "@/app/dashboard/notifications/NotificationButton"; 
-// import AnimatedSearch from "@/app/dashboard/AnimatedSearch"; 
+// import NotificationButton from "@/app/dashboard/notifications/NotificationButton";
+// import AnimatedSearch from "@/app/dashboard/AnimatedSearch";
 // import WatermarkBackground from "@/components/WatermarkBackground";
 
+// export const instant = false; // 👈 this route is auth-gated, block prerendering
+
 // export default async function MarketsLayout({ children }: { children: React.ReactNode }) {
-//   await connection(); 
+//   await connection();
 
 //   const session = await getServerSession();
 //   if (!session) redirect("/login");
 
 //   return (
 //     <div className="relative min-h-screen bg-[#f0fdf4] dark:bg-[#050806] text-lime-950 dark:text-white overflow-hidden font-sans">
-      
 //       <WatermarkBackground />
 
 //       <div className="fixed top-4 left-4 right-4 sm:top-6 sm:left-6 sm:right-6 z-50 pointer-events-none">
 //         <div className="pointer-events-auto flex items-center justify-between gap-2 sm:gap-4 bg-white/60 dark:bg-[#121A14]/60 backdrop-blur-xl border border-lime-500/20 shadow-[0_8px_32px_0_rgba(132,204,22,0.15)] dark:shadow-[0_8px_32px_0_rgba(0,0,0,0.5)] px-3 py-2 sm:px-4 sm:py-2.5 rounded-full w-full">
-          
 //           <div className="flex-1 max-w-md">
 //             <AnimatedSearch />
 //           </div>
@@ -71,14 +94,12 @@ export default async function MarketsLayout({ children }: { children: React.Reac
 //             <div className="h-5 sm:h-6 w-px bg-lime-500/20"></div>
 //             <HeaderActions hideNotifications={true} kycTier={session.tier || 0} />
 //           </div>
-
 //         </div>
 //       </div>
 
 //       <main className="relative z-10 h-screen overflow-y-auto pt-24 pb-10 px-4 sm:px-8">
 //         {children}
 //       </main>
-
 //     </div>
 //   );
 // }

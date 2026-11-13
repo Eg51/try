@@ -71,6 +71,12 @@ export function OrderTicket({ pairId, baseAsset, quoteAsset, currentPrice }: Ord
 }
 
 export default OrderTicket;
+
+
+
+
+
+
  // Added default export
 // // components/features/OrderTicket.tsx
 // "use client";

@@ -4,9 +4,9 @@ import { connection } from 'next/server';
 import connectDB from "@/lib/db";
 import User from "@/lib/models/User";
 import { KycSubmission } from "@/lib/models/Kyc";
-import Asset from "@/lib/models/Asset";
 import DashboardClient from "./DashboardClient";
 import { getDashboardData } from "@/app/actions/dashboard"; 
+import { getAllMarketAssets } from "@/lib/market-data"; // 👈 IMPORTED HELPER
 
 export const instant = false;
 
@@ -18,11 +18,10 @@ export default async function DashboardPage() {
 
   await connectDB();
 
-  // Fetch User, KYC submission, assets, AND dashboard data together
-  const [user, submission, assetsRaw, dashboardData] = await Promise.all([
+  const [user, submission, marketAssets, dashboardData] = await Promise.all([
     User.findById(session.id).lean(),
     KycSubmission.findOne({ userId: session.id }).lean(),
-    Asset.find({}).lean(),
+    getAllMarketAssets(), // 👈 REPLACED Asset.find() WITH MERGED ASSETS
     getDashboardData(), 
   ]);
 
@@ -35,7 +34,11 @@ export default async function DashboardPage() {
   const userCurrencyCode = user?.displayCurrency?.assetId || "USD";
   const displayCurrencySymbol = currencyMap[userCurrencyCode] || "$";
 
-  const dbAssets = JSON.parse(JSON.stringify(assetsRaw));
+  const dbAssets = JSON.parse(JSON.stringify(marketAssets));
+
+  // 👇 IMPORTANT: Fetch news from a News collection/model here
+  // For now, passing empty array shows "No news available" state
+  const news: Array<{ time: string; title: string; source: string }> = [];
 
   return (
     <DashboardClient
@@ -43,13 +46,73 @@ export default async function DashboardPage() {
       displayName={session.displayName || "Trader"}
       userAvatar={userAvatar}
       currencySymbol={displayCurrencySymbol}
-      dbAssets={dbAssets}
+      dbAssets={dbAssets} // 👈 This now contains the merged CoinGecko + DB data
       realBalances={dashboardData.balances}
       realTrades={dashboardData.trades}
       realActivity={dashboardData.activity}
+      news={news}
     />
   );
 }
+
+
+
+
+
+
+// // app/dashboard/page.tsx
+// import { getServerSession } from "@/lib/session";
+// import { connection } from 'next/server';
+// import connectDB from "@/lib/db";
+// import User from "@/lib/models/User";
+// import { KycSubmission } from "@/lib/models/Kyc";
+// import Asset from "@/lib/models/Asset";
+// import DashboardClient from "./DashboardClient";
+// import { getDashboardData } from "@/app/actions/dashboard"; 
+
+// export const instant = false;
+
+// export default async function DashboardPage() {
+//   await connection();
+
+//   const session = await getServerSession();
+//   if (!session) return null;
+
+//   await connectDB();
+
+//   // Fetch User, KYC submission, assets, AND dashboard data together
+//   const [user, submission, assetsRaw, dashboardData] = await Promise.all([
+//     User.findById(session.id).lean(),
+//     KycSubmission.findOne({ userId: session.id }).lean(),
+//     Asset.find({}).lean(),
+//     getDashboardData(), 
+//   ]);
+
+//   const userAvatar = submission?.documents?.selfieLivenessUrl || "";
+
+//   const currencyMap: Record<string, string> = {
+//     USD: "$", EUR: "€", GBP: "£", JPY: "¥", CAD: "C$",
+//     AUD: "A$", CHF: "CHF", CNY: "¥", INR: "₹",
+//   };
+//   const userCurrencyCode = user?.displayCurrency?.assetId || "USD";
+//   const displayCurrencySymbol = currencyMap[userCurrencyCode] || "$";
+
+//   const dbAssets = JSON.parse(JSON.stringify(assetsRaw));
+
+//   return (
+//     <DashboardClient
+//       tier={session.tier || 0}
+//       displayName={session.displayName || "Trader"}
+//       userAvatar={userAvatar}
+//       currencySymbol={displayCurrencySymbol}
+//       dbAssets={dbAssets}
+//       realBalances={dashboardData.balances}
+//       realTrades={dashboardData.trades}
+//       realActivity={dashboardData.activity}
+//     />
+//   );
+// }
+
 // // app/dashboard/page.tsx
 // import { getServerSession } from "@/lib/session";
 // import { connection } from 'next/server';

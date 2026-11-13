@@ -5,7 +5,7 @@ import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, Lock, Unlock } from "lucide-react";
 import { ALL_BADGES, BADGE_CATEGORIES } from "@/lib/gamification";
-import { handleClaimBadge } from "@/app/actions/rewards/actions"; 
+import { claimBadgeReward } from "@/app/actions/gamification";
 import { useToast } from "@/components/providers/ToastProvider";
 import { useTour } from "@/components/providers/TourProvider"; // 👈 Imported Tour Hook
 
@@ -48,7 +48,7 @@ export default function RewardsClient() {
   }, [filter, search]);
 
   const handleClaim = async (badgeId: string) => {
-    const res = await handleClaimBadge(badgeId);
+    const res = await claimBadgeReward(badgeId);
     if (res.error) {
       toast("Error", res.error, "error");
     } else {
@@ -163,6 +163,14 @@ export default function RewardsClient() {
     </div>
   );
 }
+
+
+
+
+
+
+
+
 // // app/dashboard/rewards/RewardsClient.tsx
 // "use client";
 

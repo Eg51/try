@@ -17,6 +17,7 @@
     "recentActivity": "Recent Activity",
     "viewAll": "View All",
     "type": "Type",
+    "ref": "Ref",
     "amount": "Amount",
     "status": "Status",
     "date": "Date",
@@ -38,15 +39,48 @@
     "price": "Price",
     "available": "Available",
     "executeOrder": "Execute {type} Order",
-    "selectBase": "Select Base Asset",
-    "selectQuote": "Select Quote Asset",
+    "selectBase": "Select Base",
+    "selectQuote": "Select Quote",
     "marketWatch": "Market Watch",
     "levelTrader": "Level {level} Trader",
     "viewRewards": "View Rewards & Badges",
     "marketNews": "Market News",
+    "noNews": "No news available right now.",
     "invalidAmountTitle": "Invalid Amount",
     "invalidAmountDesc": "Please enter a valid amount to trade.",
-    "justNow": "Just now"
+    "justNow": "Just now",
+    "long": "LONG",
+    "short": "SHORT",
+    "action": "Action",
+    "noPositions": "No open positions. Visit the terminal to place a trade.",
+    "noActivity": "No recent activity found.",
+    "completed": "COMPLETED",
+    "processing": "Processing...",
+    "tradeFailed": "Trade Failed",
+    "tradeSuccessful": "Trade Successful",
+    "tradeSuccessDesc": "Your {type} order for {qty} {base} was filled at {symbol}{price}.",
+    "tier1MemeRestriction": "Tier 1 accounts cannot trade meme coins. Please upgrade to Tier 2.",
+    "closeFailed": "Close Failed",
+    "positionClosed": "Position Closed",
+    "closeError": "Close Error",
+    "closeErrorDesc": "Failed to close position.",
+    "confirmCloseTitle": "Close Position?",
+    "confirmCloseDesc": "Are you sure you want to close this {side} position on {pair}?",
+    "exitPrice": "Exit Price",
+    "estimatedPnl": "Estimated PnL",
+    "cancel": "Cancel",
+    "closePosition": "Close Position",
+    "realizedPnl": "Realized PnL: {amount}. Funds have been settled in your ledger.",
+    "tour": {
+      "balanceTitle": "Wallet Balance",
+      "balanceText": "This is your real-time available balance. Click deposit to add funds.",
+      "positionsTitle": "Active Positions",
+      "positionsText": "Monitor your open trades here. You can close them and realize PnL instantly.",
+      "quicktradeTitle": "Quick Trade",
+      "quicktradeText": "Open a new position quickly with market or limit orders.",
+      "marketwatchTitle": "Market Watch",
+      "marketwatchText": "Keep an eye on the most traded pairs and their current prices."
+    }
   },
   "Login": {
     "logIn": "Log In",
@@ -114,5 +148,496 @@
     "logIn": "Log In",
     "signUp": "Sign Up",
     "demoModeBanner": "DEMO MODE — No real funds are at risk"
+  },
+  "markets": {
+    "title": "Global Markets",
+    "subtitle": {
+      "guest": "Explore live prices. Sign up to execute trades and unlock full features.",
+      "user": "Welcome back. You are trading with Tier {tier} limits."
+    },
+    "banner": {
+      "demo": "DEMO MODE - No real funds are at risk",
+      "live": "LIVE ACCOUNT - Tier {tier} Access"
+    },
+    "table": {
+      "asset": "Asset",
+      "price": "Price",
+      "change24h": "24h Change",
+      "marketCap": "Market Cap",
+      "volume": "24h Volume",
+      "action": "Action",
+      "trade": "Trade",
+      "signUp": "Sign Up",
+      "select": "Select",
+      "pending": "Pending",
+      "pendingApproval": "Pending approval",
+      "searchPlaceholder": "Search assets...",
+      "noResults": "No assets found matching your search.",
+      "categories": {
+        "all": "All",
+        "crypto": "Crypto",
+        "fiat": "Fiat",
+        "memes": "Memes"
+      }
+    },
+    "tour": {
+      "headerTitle": "Global Markets",
+      "headerText": "Browse all available assets here, including Crypto, Memes, and Fiat currencies.",
+      "tabsTitle": "Filter by Category",
+      "tabsText": "Use these tabs to quickly filter the list by asset class.",
+      "searchTitle": "Search Assets",
+      "searchText": "Type here to instantly find a specific coin or token.",
+      "tableTitle": "Live Market Data",
+      "tableText": "Click any column header (like Price or Volume) to sort the table.",
+      "tradeTitle": "Start Trading",
+      "tradeText": "Click 'Trade' on any asset to open the advanced trading terminal."
+    },
+    "fiatNames": {
+      "USD": "US Dollar",
+      "EUR": "Euro",
+      "GBP": "British Pound",
+      "JPY": "Japanese Yen",
+      "CAD": "Canadian Dollar",
+      "AUD": "Australian Dollar",
+      "CHF": "Swiss Franc",
+      "CNY": "Chinese Yuan",
+      "INR": "Indian Rupee",
+      "BRL": "Brazilian Real",
+      "RUB": "Russian Ruble",
+      "ZAR": "South African Rand",
+      "KRW": "South Korean Won",
+      "SGD": "Singapore Dollar",
+      "HKD": "Hong Kong Dollar",
+      "NZD": "New Zealand Dollar",
+      "SEK": "Swedish Krona",
+      "NOK": "Norwegian Krone",
+      "DKK": "Danish Krone",
+      "PLN": "Polish Zloty",
+      "CZK": "Czech Koruna",
+      "HUF": "Hungarian Forint",
+      "RON": "Romanian Leu",
+      "TRY": "Turkish Lira",
+      "AED": "UAE Dirham",
+      "SAR": "Saudi Riyal",
+      "QAR": "Qatari Riyal",
+      "KWD": "Kuwaiti Dinar",
+      "ILS": "Israeli Shekel",
+      "EGP": "Egyptian Pound",
+      "KES": "Kenyan Shilling",
+      "GHS": "Ghanaian Cedi",
+      "ZMW": "Zambian Kwacha",
+      "UGX": "Ugandan Shilling",
+      "TZS": "Tanzanian Shilling",
+      "RWF": "Rwandan Franc",
+      "MAD": "Moroccan Dirham",
+      "DZD": "Algerian Dinar",
+      "TND": "Tunisian Dinar",
+      "MXN": "Mexican Peso",
+      "ARS": "Argentine Peso",
+      "CLP": "Chilean Peso",
+      "COP": "Colombian Peso",
+      "PEN": "Peruvian Sol",
+      "UYU": "Uruguayan Peso",
+      "PYG": "Paraguayan Guarani",
+      "BOB": "Bolivian Boliviano",
+      "VES": "Venezuelan Bolivar",
+      "GTQ": "Guatemalan Quetzal",
+      "CRC": "Costa Rican Colon",
+      "DOP": "Dominican Peso",
+      "JMD": "Jamaican Dollar",
+      "TTD": "Trinidad Dollar",
+      "BBD": "Barbadian Dollar",
+      "BSD": "Bahamian Dollar",
+      "BZD": "Belize Dollar",
+      "HNL": "Honduran Lempira",
+      "NIO": "Nicaraguan Cordoba",
+      "PAB": "Panamanian Balboa",
+      "HTG": "Haitian Gourde"
+    }
+  },
+  "Terminal": {
+    "liveTerminal": "Live Terminal",
+    "buyLong": "BUY / LONG",
+    "sellShort": "SELL / SHORT",
+    "entryPrice": "Entry Price",
+    "stopLoss": "Stop Loss",
+    "takeProfit": "Take Profit",
+    "quantity": "Quantity",
+    "notional": "Notional",
+    "fee": "Fee ({rate}%)",
+    "risk": "Risk",
+    "reward": "Reward",
+    "rrRatio": "R:R Ratio",
+    "openPosition": "Open {side} Position",
+    "long": "Long",
+    "short": "Short"
+  },
+  "ChartPanel": {
+    "marketWatch": "Market Watch",
+    "favorited": "Favorited",
+    "favorite": "Favorite",
+    "marketStats": "Market Statistics",
+    "high24h": "24h High",
+    "low24h": "24h Low",
+    "volume24h": "24h Volume",
+    "marketCap": "Market Cap",
+    "circSupply": "Circulating Supply",
+    "watchlist": "Watchlist",
+    "emptyWatchlist": "Your watchlist is empty. Add some assets!",
+    "removeWatchlist": "Remove from watchlist",
+    "addAsset": "Add Asset...",
+    "addToWatchlist": "Add to Watchlist",
+    "searchPlaceholder": "Search assets...",
+    "added": "Added",
+    "add": "Add",
+    "saveToFavorites": "Save to Favorites",
+    "authPrompt": "You need an account to save assets to your watchlist.",
+    "logIn": "Log In",
+    "signUp": "Sign Up",
+    "errors": {
+      "addFailed": "Failed to add to watchlist.",
+      "removeFailed": "Failed to remove from watchlist.",
+      "favoriteFailed": "Failed to update favorite."
+    }
+  },
+  "AssetView": {
+    "banner": {
+      "demo": "DEMO MODE - One free trade allowed",
+      "live": "LIVE TRADING - TIER {tier} ACCOUNT"
+    },
+    "buttons": {
+      "openTrade": "Open Trade",
+      "trade": "Trade",
+      "chart": "Chart"
+    },
+    "modal": {
+      "selectBase": "Select Base Asset",
+      "selectQuote": "Select Quote Asset",
+      "searchPlaceholder": "Search assets..."
+    },
+    "errors": {
+      "tier1Meme": "Tier 1 accounts cannot trade Meme coins. Please upgrade your tier.",
+      "tier1Lot": "Tier 1 maximum lot size is 1.0. Upgrade to Tier 2 for larger trades.",
+      "baseFiat": "Please select a Crypto asset as the base pair."
+    },
+    "tour": {
+      "topbarTitle": "Terminal Controls",
+      "topbarText": "This is your control center. Here you can change the trading pair, open the chart, and access settings.",
+      "pairTitle": "Select Pair",
+      "pairText": "Click here to change the base asset (e.g., Bitcoin) or the quote currency (e.g., USD).",
+      "tradeTitle": "Open Trade Panel",
+      "tradeText": "Click here to open the side panel where you can place Market and Limit orders.",
+      "chartTitle": "Expand Chart",
+      "chartText": "Click here to open the dedicated chart analysis panel.",
+      "terminalTitle": "Trading Terminal",
+      "terminalText": "This is the live chart. You can use the tools inside to draw support and resistance lines."
+    }
+  },
+  "Kyc": {
+    "thisFeature": "this feature",
+    "skipButton": "Skip (Features will be limited)",
+    "skipModalTitle": "KYC Skipped",
+    "skipModalDesc": "You can explore the dashboard, but trading and wallet features remain locked until you verify your identity.",
+    "tierRequiredTitle": "Tier {tier} Required",
+    "tierRequiredDesc": "You need to be at least Tier {tier} to use {feature}. Redirecting you to the KYC page...",
+    "guardTitle": "Identity Verification",
+    "guardDesc": "Redirecting you to complete your KYC profile..."
+  },
+  "HeaderActions": {
+    "toggleMenu": "Toggle menu",
+    "navigation": "Navigation",
+    "overview": "Overview",
+    "terminal": "Terminal",
+    "markets": "Markets",
+    "transact": "Transact",
+    "rewards": "Rewards",
+    "verifyIdentity": "Verify Identity",
+    "notifications": "Notifications",
+    "helpSupport": "Help & Support",
+    "playTour": "Play Page Tour",
+    "toggleTheme": "Toggle Theme",
+    "settings": "Settings",
+    "profile": "Profile",
+    "logOut": "Log Out"
+  },
+  "LandingTerminal": {
+    "title": "Your personal command center",
+    "subtitle": "Experience lightning-fast execution, deep liquidity, and advanced charting tools in a beautifully crafted interface.",
+    "high": "High",
+    "low": "Low",
+    "buy": "Buy",
+    "sell": "Sell",
+    "view": "{tab} View",
+    "paused": "Paused",
+    "autoPlaying": "Auto-playing",
+    "tabs": {
+      "markets": "Markets",
+      "spot": "Spot",
+      "futures": "Futures",
+      "earn": "Earn",
+      "wallet": "Wallet"
+    },
+    "months": {
+      "may": "May",
+      "jun": "Jun",
+      "jul": "Jul",
+      "aug": "Aug",
+      "sep": "Sep",
+      "oct": "Oct"
+    },
+    "futures": {
+      "leverage": "Leverage",
+      "long": "Long 10x",
+      "short": "Short 10x",
+      "desc": "Advanced derivatives trading coming soon."
+    },
+    "earn": {
+      "title": "Stake & Earn",
+      "desc": "Stake your crypto assets to earn up to 12% APY. Unlock staking by reaching Tier 2."
+    },
+    "wallet": {
+      "totalBalance": "Total Balance",
+      "deposit": "Deposit",
+      "secure": "Secure wallet powered by double-entry ledger."
+    }
+  },
+  "LandingMarkets": {
+    "asset": "Asset",
+    "price": "Price",
+    "change": "Change",
+    "portfolio": "Portfolio",
+    "totalBalance": "Total balance across all assets",
+    "marketPulse": "Market Pulse",
+    "live": "LIVE",
+    "heading1": "Grow your profit and",
+    "heading2": "track your investments",
+    "subheading": "Use advanced analytical tools. Clear TradingView charts let you track current and historical profit investments seamlessly across crypto and global fiat currencies.",
+    "cta": "Start Learning"
+  },
+  "LandingStats": {
+    "volumeValue": "$30B",
+    "volumeLabel": "Digital Currency Exchanged",
+    "investorsValue": "10M+",
+    "investorsLabel": "Trusted Wallets Investor",
+    "countriesValue": "195",
+    "countriesLabel": "Countries Supported"
+  },
+  "Footer": {
+    "product": {
+      "title": "Product",
+      "markets": "Markets",
+      "features": "Features",
+      "howItWorks": "How it Works",
+      "launchApp": "Launch App"
+    },
+    "legal": {
+      "title": "Legal",
+      "privacy": "Privacy Policy",
+      "terms": "Terms of Service",
+      "risk": "Risk Disclosure"
+    },
+    "payments": {
+      "title": "Accepted Payments"
+    },
+    "copyright": "© 2024 Quantix Solaris Exchange. All rights reserved."
+  },
+  "FeatureGrid": {
+    "features": {
+      "gamifiedTitle": "Gamified Progression",
+      "gamifiedDesc": "Complete daily tasks, verify your identity, and earn XP to automatically upgrade your trading tier and unlock new asset classes.",
+      "ledgerTitle": "Double-Entry Ledger",
+      "ledgerDesc": "Institutional-grade financial architecture. Every single trade is cryptographically audited, balanced to zero, and instantly settled.",
+      "biometricTitle": "Biometric Security",
+      "biometricDesc": "Log in seamlessly with FaceID, TouchID, or Windows Hello. Your private keys never leave your device thanks to WebAuthn."
+    },
+    "howItWorks": {
+      "title": "How It Works",
+      "subtitle": "Start trading in three simple steps.",
+      "step1Title": "Create Your Account",
+      "step1Desc": "Sign up with Email, Google, or a Passkey. You start at Tier 1 with access to local commodities.",
+      "step2Title": "Complete Tasks & Earn XP",
+      "step2Desc": "Make your first trade, invite friends, and complete your profile to earn XP and level up your account.",
+      "step3Title": "Unlock Global Markets",
+      "step3Desc": "Reach Tier 2 to unlock Crypto and Meme coins. Reach Tier 3 to unlock Forex and institutional trading limits."
+    },
+    "newsletter": {
+      "title": "Start mining now",
+      "desc": "Join now with Quantix Solaris to get the latest news and start mining now.",
+      "placeholder": "Enter your email",
+      "button": "Subscribe",
+      "subscribing": "Subscribing...",
+      "messages": {
+        "Success": "Successfully subscribed to the newsletter!",
+        "AlreadySubscribed": "You are already subscribed!"
+      },
+      "errors": {
+        "InvalidEmail": "Please enter a valid email address.",
+        "ServerError": "Failed to subscribe. Please try again later."
+      }
+    },
+    "cta": {
+      "title": "Ready to upgrade your trading?",
+      "desc": "Join thousands of traders utilizing our double-entry ledger and gamified rewards system.",
+      "button": "Create Free Account"
+    }
+  },
+  "DevModal": {
+    "notice": "Notice",
+    "constructionTitle": "Under Construction",
+    "constructionDesc": "The \"{feature}\" feature is currently in development. We are working hard to make it available soon!",
+    "thisFeature": "This",
+    "returnButton": "Click to return"
+  },
+  "KycReminder": {
+    "title": "Identity Verification Required",
+    "description": "Your account is currently restricted. Please complete your KYC verification to unlock full trading limits, fiat withdrawals, and premium features.",
+    "verifyButton": "Verify Identity Now",
+    "remindButton": "Remind me in 2 hours"
+  },
+  "AuthPrompt": {
+    "title": "Ready to trade for real?",
+    "description": "You've reached the demo limit. Create an account or log in to continue trading and unlock full features.",
+    "logIn": "Log In",
+    "signUp": "Sign Up"
+  },
+  "TradingTerminal": {
+    "marketOpen": "MARKET OPEN",
+    "marketClosed": "MARKET CLOSED",
+    "tools": "Tools",
+    "timeframes": "Timeframes",
+    "tradeHistory": "Trade History",
+    "trades": "Trades",
+    "searchHistory": "Search history...",
+    "qty": "Qty",
+    "viewDetails": "View Details",
+    "deleteRecord": "Delete Record",
+    "takeProfit": "Take Profit",
+    "closeForfeit": "Close & Forfeit",
+    "noHistory": "No trade history found.",
+    "tradeDetails": "Trade Details",
+    "asset": "Asset",
+    "side": "Side",
+    "entryPrice": "Entry Price",
+    "quantity": "Quantity",
+    "pnl": "PnL",
+    "closeDetails": "Close Details",
+    "cursor": "Cursor",
+    "trendLine": "Trend Line",
+    "horizontalLine": "Horizontal Line",
+    "ray": "Ray",
+    "rectangle": "Rectangle",
+    "fibonacci": "Fibonacci",
+    "deleteSelected": "Delete Selected",
+    "selectBase": "Select Base Asset",
+    "selectQuote": "Select Quote Asset",
+    "searchAssets": "Search assets...",
+    "exploreBase": "Explore All Base Markets",
+    "exploreAll": "Explore All Markets",
+    "tour": {
+      "headerTitle": "Trading Pair",
+      "headerText": "This shows your active trading pair. Click it to open the market selector.",
+      "toolsTitle": "Drawing Tools",
+      "toolsText": "Click here to access line, ray, fibonacci, and other technical analysis tools.",
+      "tfTitle": "Timeframes",
+      "tfText": "Switch between 1-minute, 1-hour, daily, or weekly charts.",
+      "chartTitle": "Live Chart",
+      "chartText": "This is where the price action happens. You can draw analysis and track live trends.",
+      "historyTitle": "Trade History",
+      "historyText": "View your past trades, check PnL, and manage open positions."
+    },
+    "history": {
+      "confirmProfitTitle": "Take Profit?",
+      "confirmProfit": "Are you sure you want to close this position and secure your profits?",
+      "confirmForfeitTitle": "Close & Forfeit?",
+      "confirmForfeit": "Are you sure you want to close this losing position and forfeit the margin?",
+      "cancel": "Cancel"
+    }
+  },
+  "PairSelection": {
+    "title": "Select Trading Pair",
+    "desc": "Choose your base and quote assets to start trading.",
+    "selectBase": "Select Base",
+    "selectQuote": "Select Quote",
+    "search": "Search assets...",
+    "save": "Save Pair"
+  },
+  "FavorablePairsCard": {
+    "topPair": "Top Pair",
+    "liveChart": "Live chart tracking the most favorable pair.",
+    "selectBase": "Select Base",
+    "selectQuote": "Select Quote"
+  },
+  "TimeGreeting": {
+    "morning": "Good Morning",
+    "afternoon": "Good Afternoon",
+    "evening": "Good Evening",
+    "night": "Good Night"
+  },
+  "UserAvatar": {
+    "invalidTitle": "Invalid File",
+    "invalidDesc": "Please upload a valid image file.",
+    "successTitle": "Success",
+    "updateSuccess": "Profile picture updated successfully.",
+    "errorTitle": "Error",
+    "updateError": "Failed to update profile picture.",
+    "compressSuccess": "Image compressed and updated successfully.",
+    "compressErrorTitle": "Compression Failed",
+    "compressErrorDesc": "Failed to compress the image. Please try a different file.",
+    "removedTitle": "Removed",
+    "removedDesc": "Profile picture has been removed.",
+    "removeError": "Failed to remove profile picture.",
+    "sizeWarning": "Image is {size}MB (Max 100KB)",
+    "compressSave": "Compress & Save",
+    "cancel": "Cancel",
+    "replaceImage": "Replace Image",
+    "viewFull": "View Full",
+    "remove": "Remove"
+  },
+    "UserActions": {
+    "settingsUpdatedTitle": "Preferences Updated",
+    "settingsUpdatedMsg": "Your display currency was set to {currency} and language to {language}.",
+    "profileUpdatedTitle": "Profile Updated",
+    "profileUpdatedMsg": "Your display name has been changed to {name}."
+  },
+  "Profile": {
+    "title": "Account Settings",
+    "subtitle": "Manage your personal information, security, and preferences.",
+    "tiers": {
+      "tier3": "Tier 3: Institutional",
+      "tier2": "Tier 2: Advanced",
+      "tier1": "Tier 1: Basic",
+      "unverified": "Unverified"
+    },
+    "security": {
+      "title": "Security",
+      "desc": "Password management coming soon.",
+      "changePassword": "Change Password",
+      "managePasskeys": "Manage Passkeys",
+      "signOut": "Sign Out"
+    },
+    "details": {
+      "title": "Personal Details",
+      "displayName": "Display Name",
+      "emailLocked": "Email (Locked)",
+      "saveChanges": "Save Changes"
+    },
+    "preferences": {
+      "title": "Preferences",
+      "currencyTitle": "Display Currency",
+      "currencyDesc": "Used for all balances and charts.",
+      "manage": "Manage"
+    },
+    "sessions": {
+      "title": "Active Sessions",
+      "current": "Current Session",
+      "device": "Chrome on Windows • Localhost",
+      "active": "Active"
+    },
+    "modals": {
+      "successTitle": "Success",
+      "successDesc": "Profile updated successfully.",
+      "errorTitle": "Error",
+      "errorDesc": "Failed to update profile."
+    }
   }
 }

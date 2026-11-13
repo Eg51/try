@@ -1,0 +1,529 @@
+// app/demo/DemoClient.tsx
+"use client";
+
+import { useState, useEffect, useMemo } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
+import Link from "next/link";
+import { useTranslations } from "next-intl";
+import {
+  TrendingUp, TrendingDown, Activity, PieChart, ShieldCheck, Flame,
+  Newspaper, ChevronRight, Award, Zap, Wallet, 
+  LogOut, LogIn, UserPlus, X, ChevronDown, Sparkles, Sun, Sunrise,
+  Sunset, Moon, Loader2,
+} from "lucide-react";
+import { Button } from "@/components/ui/Button";
+import { useDevModal } from "@/components/providers/DevModalProvider";
+import { getDemoSessionAction, executeDemoTradeAction } from "@/app/actions/demo"; 
+
+const WATERMARK_SYMBOLS = [
+  "$", "€", "£", "¥", "₦", "₹", "₩", "₪", "₫", "₴", "₭", "₮", "₱", "฿", "₲",
+  "₵", "₡", "₸", "₼", "₾", "֏", "؋", "৳", "៛", "₥", "₣", "₤", "₧", "₯", "₰",
+  "₳", "₢", "₠", "₨", "₶", "₷", "₺", "₻", "₽", "₿", "C$", "A$", "R$", "S$",
+  "HK$", "NT$", "NZ$", "CHF", "kr", "zł", "Kč", "Ft", "lei", "лв", "din", "ден",
+  "L", "Q", "B/.", "₡", "₲", "Gs", "S/.", "Bs.", "$U", "RD$", "J$", "TT$",
+  "Bds$", "EC$", "FJ$", "WS$", "T$", "VT", "K", "T", "₭", "₮", "៛", "₫", "Rp",
+  "RM", "S$", "฿", "Ξ", "Ð", "Ł", "Ƀ", "ȿ", "Μ", "◎", "Ꞩ", "✕", "ⓩ", "⧫", "Ɖ",
+  "ɱ", "Ꝟ", "Ꝑ", "Ⓝ", "Ⓞ", "Ⓣ", "Ⓡ", "Ⓢ", "Ⓤ", "Ⓐ", "Ⓥ", "Ⓔ", "Ⓛ", "Ⓜ", "Ⓟ",
+  "Ⓠ", "Ⓦ", "Ⓧ", "Ⓨ", "Ⓩ", "⓪", "①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧", "⑨",
+  "⑩", "♦", "◈", "⬡", "⬢", "◊", "⟁", "⧉", "⧈", "⌬", "⎔", "⏣", "⏥", "⏦", "✕",
+  "✖", "☰", "⛓", "🔗", "🌐", "⚙️", "🧩", "🧮", "📈", "📉", "⚖️", "🛡️", "🔑", "🗝️",
+  "🧊", "🔥", "💧", "🌪️", "🌍", "🪐", "☄️", "🛰️", "🐕", "🐶", "🐱", "🐸", "🐵",
+  "🦍", "🦊", "🐺", "🐻", "🐼", "🐨", "🐷", "🐮", "🐔", "🐧", "🦅", "🦄", "🐳",
+  "🐋", "🦈", "🐙", "🦑", "🦀", "🦞", "🦐", "🐡", "🐠", "🐟", "🌙", "🚀", "💎",
+  "🙌", "🔥", "🌕", "⭐", "🌟", "✨", "⚡", "💥", "💫", "🪙", "💰", "💸", "💵",
+  "💴", "💶", "💷", "🍌", "🍕", "🍻", "🍼", "🧠", "👽", "🤖", "👻", "💀", "🤡",
+  "🐂", "🐻", "🦍", "🐕‍🦺", "🦴", "🥩", "🍗", "🧀", "🌮", "🍔", "🍟", "🥑",
+];
+
+const BTC_PRICE_USD = 64230;
+const NGN_PER_USD = 1500;
+const BTC_PRICE_NGN = BTC_PRICE_USD * NGN_PER_USD;
+
+const formatNumber = (value: string) => {
+  const cleanValue = value.replace(/[^0-9.]/g, "");
+  const parts = cleanValue.split(".");
+  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return parts.length > 1 ? `${parts[0]}.${parts[1].slice(0, 2)}` : parts[0];
+};
+
+function DemoGreeting() {
+  const t = useTranslations("Demo");
+  const [greeting, setGreeting] = useState({
+    text: t("goodEvening"),
+    icon: <Sun size={16} fill="currentColor" />,
+    color: "text-amber-500",
+  });
+
+  useEffect(() => {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) setGreeting({ text: t("goodMorning"), icon: <Sunrise size={16} fill="currentColor" />, color: "text-amber-500" });
+    else if (hour >= 12 && hour < 17) setGreeting({ text: t("goodAfternoon"), icon: <Sun size={16} fill="currentColor" />, color: "text-orange-500" });
+    else if (hour >= 17 && hour < 21) setGreeting({ text: t("goodEvening"), icon: <Sunset size={16} fill="currentColor" />, color: "text-rose-500" });
+    else setGreeting({ text: t("goodNight"), icon: <Moon size={16} fill="currentColor" />, color: "text-indigo-400" });
+  }, [t]);
+
+  return (
+    <div className="flex flex-col min-w-0">
+      <div className="flex items-center gap-1 sm:gap-2 mb-0.5 whitespace-nowrap">
+        <span className="text-[10px] sm:text-xs font-bold text-lime-800/60 dark:text-lime-200/50 uppercase tracking-widest">
+          {greeting.text},
+        </span>
+        <motion.div animate={{ y: [0, -2, 0] }} transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }} className={`${greeting.color} shrink-0`}>
+          {greeting.icon}
+        </motion.div>
+      </div>
+      <h1 className="text-lg sm:text-xl font-extrabold text-lime-950 dark:text-white tracking-tight truncate max-w-[120px] xs:max-w-[150px] sm:max-w-none">
+        {t("demoTrader")}
+      </h1>
+    </div>
+  );
+}
+
+function TradeSparkline({ status }: { status: string }) {
+  let color = "#10b981";
+  let path = "M 0 20 Q 10 20, 20 15 T 40 15 T 60 20";
+  if (status === 'increasing') { color = "#3b82f6"; path = "M 0 25 Q 15 25, 20 15 T 40 10 T 60 5"; }
+  else if (status === 'falling') { color = "#eab308"; path = "M 0 5 Q 15 10, 20 15 T 40 20 T 60 25"; }
+  else if (status === 'closed') { color = "#ef4444"; path = "M 0 5 Q 15 10, 20 25 T 40 30 T 60 35"; }
+
+  return (
+    <svg viewBox="0 0 60 40" className="w-16 h-8 overflow-visible">
+      <defs>
+        <linearGradient id={`grad-${status}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.4" />
+          <stop offset="100%" stopColor={color} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <path d={`${path} L 60 40 L 0 40 Z`} fill={`url(#grad-${status})`} />
+      <path d={path} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export default function DemoClient({ dbAssets = [], news = [] }: { dbAssets?: any[], news?: any[] }) {
+  const t = useTranslations("Demo");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { openModal } = useDevModal();
+  const [showExitModal, setShowExitModal] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  
+  const [session, setSession] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const [baseAsset, setBaseAsset] = useState("BTC");
+  const [quoteAsset, setQuoteAsset] = useState("USD");
+  const [tradeType, setTradeType] = useState<"buy" | "sell">("buy");
+  const [orderType, setOrderType] = useState("market");
+  const [amount, setAmount] = useState("");
+  const [takeProfit, setTakeProfit] = useState("");
+  const [stopLoss, setStopLoss] = useState("");
+  const [feedback, setFeedback] = useState<{ type: "success" | "error"; msg: string } | null>(null);
+  const [isExecuting, setIsExecuting] = useState(false);
+
+  const pairParam = searchParams.get("pair");
+
+  useEffect(() => {
+    setMounted(true);
+    if (pairParam) {
+      const [b, q] = pairParam.split("-");
+      setBaseAsset(b);
+      setQuoteAsset(q || "USD");
+    }
+    
+    async function init() {
+      const data = await getDemoSessionAction();
+      setSession(data);
+      setIsLoading(false);
+    }
+    init();
+  }, [pairParam]);
+
+  const activePairSymbol = `${baseAsset}/${quoteAsset}`;
+  
+  // Resolve the active price from the Feeder Cache
+  const activeAssetData = dbAssets.find((a: any) => a.symbol === baseAsset);
+  const activePrice = activeAssetData ? activeAssetData.basePrice : 64230; 
+
+  const watermarks = useMemo(
+    () =>
+      WATERMARK_SYMBOLS.flatMap((symbol, i) =>
+        Array.from({ length: 4 }).map((_, j) => ({
+          symbol,
+          rotation: ((i * 13 + j * 7) % 60) - 30,
+          top: `${(i * 17 + j * 23) % 100}%`,
+          left: `${(i * 29 + j * 11) % 100}%`,
+          scale: 1 + ((i + j) % 3) * 0.4,
+        }))
+      ),
+    []
+  );
+
+  const totalNgn = session ? session.ngnBalance + session.btcBalance * BTC_PRICE_NGN : 0;
+
+  const executeTrade = async () => {
+    if (!session) return;
+    
+    const activePositions = session.positions.filter((p: any) => p.status !== "closed");
+    if (activePositions.length > 0) {
+      openModal(
+        t("signInRequired"), 
+        t("signInPrompt"), 
+        "info",
+        { label: t("signIn"), onClick: () => router.push("/login") }
+      );
+      return;
+    }
+
+    const rawAmount = amount.replace(/,/g, "");
+    const qty = parseFloat(rawAmount);
+
+    if (!qty || qty <= 0) {
+      setFeedback({ type: "error", msg: t("invalidAmount") });
+      return;
+    }
+
+    setIsExecuting(true);
+    setFeedback(null);
+
+    const res = await executeDemoTradeAction({
+      pair: activePairSymbol,
+      side: tradeType,
+      amount: qty,
+      price: activePrice,
+    });
+
+    setIsExecuting(false);
+
+    if (res.error) {
+      setFeedback({ type: "error", msg: res.error });
+    } else {
+      setAmount("");
+      setTakeProfit("");
+      setStopLoss("");
+      
+      const updatedData = await getDemoSessionAction();
+      setSession(updatedData);
+      
+      setFeedback({ type: "success", msg: t("tradeSuccessful") || "Trade executed!" });
+    }
+  };
+
+  if (!mounted || isLoading || !session) return null;
+
+  return (
+    <div className="relative min-h-screen bg-[#f0fdf4] dark:bg-[#050806] overflow-hidden font-sans pb-12 transition-colors duration-300 w-full max-w-[100vw]">
+      <div className="absolute inset-0 pointer-events-none overflow-hidden select-none z-0">
+        {watermarks.map((wm, idx) => (
+          <span
+            key={idx}
+            className="absolute text-4xl md:text-6xl font-bold text-lime-900/[0.04] dark:text-lime-100/[0.02]"
+            style={{
+              transform: `rotate(${wm.rotation}deg) scale(${wm.scale})`,
+              top: wm.top,
+              left: wm.left,
+            }}
+          >
+            {wm.symbol}
+          </span>
+        ))}
+      </div>
+
+      <div className="absolute top-[-10%] left-[-10%] w-[60%] md:w-[40%] h-[40%] bg-lime-300/40 dark:bg-lime-900/10 blur-[120px] rounded-full pointer-events-none z-0" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[60%] md:w-[40%] h-[40%] bg-green-300/30 dark:bg-green-900/10 blur-[120px] rounded-full pointer-events-none z-0" />
+
+      <div className="relative z-50 bg-lime-600 text-white text-center py-2 text-sm font-bold tracking-wide flex items-center justify-center gap-2 shadow-md">
+        <Flame className="text-amber-500" size={16} /> {t("demoModeBanner")}
+      </div>
+
+      <div className="relative z-10 max-w-7xl mx-auto space-y-6 pb-12 pt-6 px-2 sm:px-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="relative flex flex-col justify-between bg-white/60 dark:bg-[#0a0f0b]/60 backdrop-blur-xl border border-lime-500/20 p-5 sm:p-6 rounded-3xl shadow-[0_8px_32px_0_rgba(132,204,22,0.15)] dark:shadow-[0_8px_32px_0_rgba(0,0,0,0.5)] h-full overflow-hidden"
+          >
+            <div className="absolute inset-0 pointer-events-none flex items-center justify-end pr-8 opacity-[0.03] dark:opacity-[0.02]">
+              <Wallet size={200} strokeWidth={1} />
+            </div>
+
+            <div className="flex flex-col gap-6 w-full relative z-10 h-full">
+              
+              <div className="flex justify-between items-center sm:flex-col sm:items-start sm:gap-4 w-full gap-4 min-w-0">
+                <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                  <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-full shrink-0">
+                    <div className="w-full h-full rounded-full overflow-hidden border-[4px] border-white dark:border-[#1a261d] bg-gradient-to-br from-lime-400 to-green-500 flex items-center justify-center shadow-xl">
+                      <Sparkles size={24} className="text-white sm:w-7 sm:h-7" />
+                    </div>
+                  </div>
+                  <DemoGreeting />
+                </div>
+
+                <div className="flex flex-col items-end sm:items-start justify-center shrink-0 sm:mt-2">
+                  <span className="text-[10px] sm:text-xs font-bold text-lime-800/60 dark:text-lime-200/50 mb-0.5 sm:mb-1 whitespace-nowrap">
+                    {t("demoBalance")}
+                  </span>
+                  <div className="flex items-center gap-0.5 sm:gap-1 whitespace-nowrap">
+                    <span className="text-sm sm:text-lg font-extrabold text-lime-950 dark:text-white">₦</span>
+                    <span className="text-xl sm:text-2xl font-extrabold text-lime-950 dark:text-white tracking-tight">
+                      {totalNgn.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 w-full sm:w-auto sm:max-w-md mt-auto pt-2">
+                <div className="flex-1 flex flex-col rounded-xl px-3 py-2 bg-white/50 dark:bg-[#121A14]/60 border border-lime-500/20">
+                  <span className="text-[9px] font-bold text-lime-800/60 dark:text-lime-200/50 uppercase tracking-widest">
+                    BTC
+                  </span>
+                  <span className="text-sm font-mono font-bold text-lime-950 dark:text-white">
+                    ₿ {session.btcBalance.toFixed(4)}
+                  </span>
+                </div>
+                <Button
+                  onClick={() => setShowExitModal(true)}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-3 sm:py-4 bg-[#5d9e17] text-white rounded-xl text-sm sm:text-base font-bold hover:bg-[#4a7e12] transition-colors shadow-lg shadow-lime-600/20 h-auto"
+                >
+                  <LogIn size={18} /> {t("goLive")}
+                </Button>
+              </div>
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="bg-white/60 dark:bg-[#0a0f0b]/60 backdrop-blur-xl border border-lime-500/20 p-5 sm:p-6 rounded-3xl shadow-[0_8px_32px_0_rgba(132,204,22,0.15)] dark:shadow-[0_8px_32px_0_rgba(0,0,0,0.5)] h-full overflow-hidden"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-lime-950 dark:text-white flex items-center gap-2">
+                <TrendingUp size={18} className="text-lime-500" /> {t("favorablePairs")}
+              </h3>
+              <span className="text-[10px] font-bold bg-lime-500/10 text-lime-600 dark:text-lime-400 px-2 py-0.5 rounded-md uppercase tracking-wider">
+                {t("demo")}
+              </span>
+            </div>
+            <div className="space-y-2">
+              {dbAssets.slice(0, 4).map((p: any) => (
+                <div
+                  key={p.symbol}
+                  onClick={() => router.push('/markets?select=base&returnUrl=/demo')}
+                  className="flex items-center justify-between p-3 rounded-xl bg-white/40 dark:bg-[#121A14]/40 border border-lime-500/10 hover:border-lime-500/30 transition-colors cursor-pointer"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-lime-500/10 flex items-center justify-center text-lime-600 dark:text-lime-400 font-bold text-sm">
+                      {p.symbol.charAt(0)}
+                    </div>
+                    <div>
+                      <div className="font-bold text-sm text-lime-950 dark:text-white">{p.symbol}/USD</div>
+                      <div className="text-[10px] text-lime-800/50 dark:text-lime-200/40">{p.name}</div>
+                    </div>
+                  </div>
+                  <span className="text-xs font-bold text-green-500">+0.8%</span>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-2">
+          <div className="lg:col-span-2 space-y-6">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.15 }}
+              className="bg-[#f4fbf5]/90 dark:bg-[#0a0f0b]/90 backdrop-blur-2xl border border-lime-500/20 rounded-3xl p-6 flex flex-col sm:flex-row items-center justify-between shadow-xl"
+            >
+              <div className="flex items-center gap-4 mb-4 sm:mb-0">
+                <div className="p-3 bg-lime-500/20 rounded-2xl text-lime-600 dark:text-lime-400">
+                  <ShieldCheck size={32} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-lime-950 dark:text-white text-lg">{t("tierAccount")}</h3>
+                  <p className="text-sm text-lime-800/60 dark:text-lime-200/50 font-medium">
+                    {t("unlocked")}
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-col items-center sm:items-end w-full sm:w-auto">
+                <div className="w-full sm:w-48 bg-white/50 dark:bg-[#050806]/80 rounded-full h-2 overflow-hidden border border-lime-500/20 mb-2 shadow-inner">
+                  <div className="bg-lime-500 h-full w-[65%] rounded-full shadow-[0_0_10px_rgba(132,204,22,0.8)]" />
+                </div>
+                <span className="text-xs font-bold text-lime-600 dark:text-lime-400">
+                  {t("earnXp")}
+                </span>
+              </div>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="bg-[#f4fbf5]/90 dark:bg-[#0a0f0b]/90 backdrop-blur-xl border border-lime-500/20 rounded-3xl overflow-hidden shadow-xl"
+            >
+              <div className="p-4 sm:p-6 border-b border-lime-500/10 flex justify-between items-center bg-white/50 dark:bg-[#121A14]/50">
+                <h3 className="font-bold text-lime-950 dark:text-white flex items-center gap-2">
+                  <Activity size={18} className="text-lime-500" /> {t("activePositions")}
+                </h3>
+                <span className="text-xs font-bold text-lime-600 dark:text-lime-400">
+                  {session.positions.filter((p: any) => p.status !== "closed").length} {t("open")}
+                </span>
+              </div>
+              <div className="w-full overflow-x-auto custom-scrollbar pb-2">
+                <table className="w-max min-w-full text-left text-sm whitespace-nowrap">
+                  <thead className="text-xs text-lime-800/50 dark:text-lime-200/40 bg-lime-500/5">
+                    <tr>
+                      <th className="px-3 sm:px-4 py-3 font-semibold">{t("asset")}</th>
+                      <th className="px-3 sm:px-4 py-3 font-semibold">{t("size")}</th>
+                      <th className="px-3 sm:px-4 py-3 font-semibold">{t("entryPrice")}</th>
+                      <th className="px-3 sm:px-4 py-3 font-semibold">{t("markPrice")}</th>
+                      <th className="px-3 sm:px-4 py-3 font-semibold text-center">{t("trend")}</th>
+                      <th className="px-3 sm:px-4 py-3 font-semibold text-right">{t("unrealizedPnl")}</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-lime-500/10">
+                    {session.positions.map((pos: any) => (
+                      <tr key={pos.id} className="hover:bg-lime-500/5 transition-colors">
+                        <td className="px-3 sm:px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${pos.type === "Long" ? "bg-green-500/20 text-green-500" : "bg-red-500/20 text-red-500"}`}>
+                              {pos.type}
+                            </span>
+                            <span className="font-bold text-lime-950 dark:text-white">{pos.asset}</span>
+                          </div>
+                        </td>
+                        <td className="px-3 sm:px-4 py-3 font-mono text-lime-800 dark:text-lime-200">{pos.size}</td>
+                        <td className="px-3 sm:px-4 py-3 font-mono text-lime-800/60 dark:text-lime-200/50">{pos.entry}</td>
+                        <td className="px-3 sm:px-4 py-3 font-mono text-lime-950 dark:text-white">{pos.current}</td>
+                        <td className="px-3 sm:px-4 py-3 flex justify-center">
+                          <TradeSparkline status={pos.status as any} />
+                        </td>
+                        <td className={`px-3 sm:px-4 py-3 text-right font-bold font-mono ${pos.isProfit ? "text-green-500" : "text-red-500"}`}>
+                          {pos.pnl} <span className="text-xs opacity-70">({pos.pnlPct})</span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.22 }}
+              className="bg-[#f4fbf5]/90 dark:bg-[#0a0f0b]/90 backdrop-blur-xl border border-lime-500/20 rounded-3xl overflow-hidden shadow-xl"
+            >
+              <div className="p-4 sm:p-6 border-b border-lime-500/10 flex justify-between items-center bg-white/50 dark:bg-[#121A14]/50">
+                <h3 className="font-bold text-lime-950 dark:text-white flex items-center gap-2">
+                  <Wallet size={18} className="text-lime-500" /> {t("recentActivity")}
+                </h3>
+                <span className="text-xs font-bold text-lime-600 dark:text-lime-400">
+                  {session.activity.length} {t("entries")}
+                </span>
+              </div>
+              <div className="w-full overflow-x-auto custom-scrollbar pb-2">
+                <table className="w-max min-w-full text-left text-sm whitespace-nowrap">
+                  <thead className="text-xs text-lime-800/50 dark:text-lime-200/40 bg-lime-500/5">
+                    <tr>
+                      <th className="px-3 sm:px-4 py-3 font-semibold">{t("type")}</th>
+                      <th className="px-3 sm:px-4 py-3 font-semibold">{t("asset")}</th>
+                      <th className="px-3 sm:px-4 py-3 font-semibold">{t("amount")}</th>
+                      <th className="px-3 sm:px-4 py-3 font-semibold">{t("status")}</th>
+                      <th className="px-3 sm:px-4 py-3 font-semibold text-right">{t("date")}</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-lime-500/10">
+                    {session.activity.map((tx: any) => (
+                      <tr key={tx.id} className="transition-colors">
+                        <td className="px-3 sm:px-4 py-3 font-bold text-lime-950 dark:text-white">{tx.type}</td>
+                        <td className="px-3 sm:px-4 py-3 font-mono text-lime-800 dark:text-lime-200">{tx.asset}</td>
+                        <td className={`px-3 sm:px-4 py-3 font-mono font-bold ${tx.type === "Deposit" ? "text-green-500" : tx.type === "Withdrawal" ? "text-red-500" : "text-lime-950 dark:text-white"}`}>
+                          {tx.amount}
+                        </td>
+                        <td className="px-3 sm:px-4 py-3">
+                          <span className={`text-[10px] font-bold px-2 py-1 rounded-md ${tx.status === "Completed" || tx.status === "Filled" ? "bg-green-500/10 text-green-500" : "bg-amber-500/10 text-amber-500"}`}>
+                            {tx.status}
+                          </span>
+                        </td>
+                        <td className="px-3 sm:px-4 py-3 text-right text-xs text-lime-800/50 dark:text-lime-200/40">{tx.date}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </motion.div>
+            
+            {/* Allocation & Risk Metrics omitted for brevity (same as previous) */}
+          </div>
+
+          <div className="space-y-6">
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="bg-[#f4fbf5]/90 dark:bg-[#0a0f0b]/90 backdrop-blur-xl border border-lime-500/20 rounded-3xl p-6 shadow-2xl relative"
+            >
+              <h3 className="font-bold text-lime-950 dark:text-white mb-4">{t("quickTrade")}</h3>
+
+              <div className="flex p-1 bg-lime-100/50 dark:bg-[#121A14] rounded-xl mb-4 border border-lime-500/10">
+                <button onClick={() => setTradeType("buy")} className={`flex-1 py-1.5 text-sm font-bold rounded-lg transition-colors ${tradeType === "buy" ? "bg-green-500 text-white shadow-md" : "text-lime-800 dark:text-lime-200"}`}>{t("buy")}</button>
+                <button onClick={() => setTradeType("sell")} className={`flex-1 py-1.5 text-sm font-bold rounded-lg transition-colors ${tradeType === "sell" ? "bg-red-500 text-white shadow-md" : "text-lime-800 dark:text-lime-200"}`}>{t("sell")}</button>
+              </div>
+
+              <div className="space-y-3 mb-4">
+                <div className="flex items-center gap-2">
+                  <Link href="/markets?select=base&returnUrl=/demo" className="flex-1 flex items-center justify-between px-3 py-2 bg-white dark:bg-[#121A14] border border-lime-500/20 rounded-xl hover:border-lime-500/50 transition-colors group">
+                    <span className="font-bold text-sm text-lime-950 dark:text-white group-hover:text-lime-600 transition-colors">{baseAsset}</span>
+                    <ChevronDown size={14} className="text-lime-500 shrink-0" />
+                  </Link>
+                  <span className="text-lime-800/40 dark:text-lime-200/30 font-bold">/</span>
+                  <Link href="/markets?select=quote&returnUrl=/demo" className="flex-1 flex items-center justify-between px-3 py-2 bg-white dark:bg-[#121A14] border border-lime-500/20 rounded-xl hover:border-lime-500/50 transition-colors group">
+                    <span className="font-bold text-sm text-lime-950 dark:text-white group-hover:text-lime-600 transition-colors">{quoteAsset}</span>
+                    <ChevronDown size={14} className="text-lime-500 shrink-0" />
+                  </Link>
+                </div>
+
+                <div>
+                  <div className="flex justify-between text-xs text-lime-800/60 dark:text-lime-200/50 mb-1 px-1">
+                    <span>{t("amount")}</span>
+                    <span>{t("available")}: ₦ {session.ngnBalance.toLocaleString()}</span>
+                  </div>
+                  <input type="text" inputMode="decimal" placeholder="0.00" value={amount} onChange={(e) => setAmount(formatNumber(e.target.value))} className="w-full bg-white dark:bg-[#121A14] border border-lime-500/20 rounded-xl px-3 py-2 text-sm text-lime-950 dark:text-white focus:outline-none focus:border-lime-500 font-mono" />
+                </div>
+              </div>
+
+              {feedback && (
+                <div className={`mb-3 p-2 rounded-lg text-xs font-bold ${feedback.type === "success" ? "bg-green-500/10 text-green-600 border border-green-500/20" : "bg-red-500/10 text-red-600 border border-red-500/20"}`}>
+                  {feedback.msg}
+                </div>
+              )}
+
+              <Button onClick={executeTrade} disabled={isExecuting || !amount || parseFloat(amount.replace(/,/g, "")) <= 0} className={`w-full h-11 font-bold text-white rounded-xl shadow-lg transition-all disabled:opacity-50 ${tradeType === "buy" ? "bg-green-600 hover:bg-green-700 shadow-green-600/20" : "bg-red-600 hover:bg-red-700 shadow-red-600/20"}`}>
+                {isExecuting ? <Loader2 className="animate-spin" size={18} /> : t("executeOrder", { type: tradeType === "buy" ? t("buy") : t("sell") })}
+              </Button>
+            </motion.div>
+
+            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="bg-[#f4fbf5]/90 dark:bg-[#0a0f0b]/90 backdrop-blur-xl border border-lime-500/20 rounded-3xl p-5 shadow-xl">
+              <h3 className="font-bold text-lime-950 dark:text-white mb-4 flex items-center gap-2">
+                <Newspaper size={18} className="text-blue-500" /> {t("marketNews")}
+              </h3>
+              <div className="space-y-4">
+                {news.length > 0 ? news.map((item: any, i: number) => (
+                  <div key={i} className="group cursor-pointer">
+                    <p className="text-[10px] text-lime-600 dark:text-lime-400 font-bold mb-0.5">{item.time} • {item.source}</p>
+                    <h4 className="text-xs font-bold text-lime-950 dark:text-white leading-snug group-hover:text-lime-600 transition-colors">{item.title}</h4>
+                  </div>
+                )) : (
+                  <p className="text-xs text-lime-800/50 dark:text-lime-200/40 font-medium">No news available.</p>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

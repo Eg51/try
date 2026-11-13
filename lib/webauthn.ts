@@ -1,4 +1,5 @@
 // lib/webauthn.ts
+import "server-only"; // 👈 ADD THIS LINE
 import { cookies } from 'next/headers';
 
 export const RP_NAME = process.env.WEBAUTHN_RP_NAME || 'Quantix Solaris';
@@ -7,7 +8,7 @@ export const ORIGIN = process.env.WEBAUTHN_ORIGIN || 'http://localhost:3000';
 
 export const CHALLENGE_COOKIE_REGISTER = 'webauthn_chal_register';
 export const CHALLENGE_COOKIE_LOGIN = 'webauthn_chal_login';
-export const CHALLENGE_TTL_SECONDS = 300; // 5 minutes
+export const CHALLENGE_TTL_SECONDS = 300; 
 
 export async function setChallengeCookie(cookieName: string, challenge: string) {
   const cookieStore = await cookies();

@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { m, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { TrendingUp, Activity, ArrowUpRight, Flame } from "lucide-react";
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 
 const trendingAssets = [
   { name: 'Bitcoin', symbol: 'BTC', price: '$67,430', change: '+7.3%', color: 'from-orange-400 to-orange-600', initial: 'B' },
@@ -19,6 +20,7 @@ const trendingAssets = [
 ];
 
 export default function MarketsSection() {
+  const t = useTranslations("LandingMarkets");
   const [currentIndex, setCurrentIndex] = useState(0);
 
   useEffect(() => {
@@ -33,10 +35,16 @@ export default function MarketsSection() {
       
       {/* HEADER ROW */}
       <div className="flex justify-between items-center mb-4 sm:mb-6 px-1 sm:px-2">
-        <span className="text-[10px] sm:text-xs font-bold text-lime-800/50 dark:text-lime-200/40 uppercase tracking-wider">Asset</span>
+        <span className="text-[10px] sm:text-xs font-bold text-lime-800/50 dark:text-lime-200/40 uppercase tracking-wider">
+          {t("asset")}
+        </span>
         <div className="flex gap-2 sm:gap-8 text-right shrink-0">
-          <span className="text-[10px] sm:text-xs font-bold text-lime-800/50 dark:text-lime-200/40 uppercase tracking-wider w-16 sm:w-20">Price</span>
-          <span className="text-[10px] sm:text-xs font-bold text-lime-800/50 dark:text-lime-200/40 uppercase tracking-wider w-14 sm:w-16">Change</span>
+          <span className="text-[10px] sm:text-xs font-bold text-lime-800/50 dark:text-lime-200/40 uppercase tracking-wider w-16 sm:w-20">
+            {t("price")}
+          </span>
+          <span className="text-[10px] sm:text-xs font-bold text-lime-800/50 dark:text-lime-200/40 uppercase tracking-wider w-14 sm:w-16">
+            {t("change")}
+          </span>
         </div>
       </div>
       
@@ -90,7 +98,7 @@ export default function MarketsSection() {
       <div className="relative z-10">
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs font-bold text-lime-800/50 dark:text-lime-200/40 uppercase tracking-wider flex items-center gap-2">
-            <Activity size={14} /> Portfolio
+            <Activity size={14} /> {t("portfolio")}
           </span>
           <span className="text-xs font-bold text-green-500 bg-green-500/10 px-2 py-1 rounded-md flex items-center gap-1">
             <ArrowUpRight size={12} /> +14.5%
@@ -99,7 +107,7 @@ export default function MarketsSection() {
         <div className="text-3xl font-extrabold text-lime-950 dark:text-white mb-1">
           $14,230<span className="text-lime-800/50 dark:text-lime-200/50 text-xl">.50</span>
         </div>
-        <p className="text-xs text-lime-800/60 dark:text-lime-200/50">Total balance across all assets</p>
+        <p className="text-xs text-lime-800/60 dark:text-lime-200/50">{t("totalBalance")}</p>
       </div>
 
       <div className="relative h-16 w-full mt-4">
@@ -111,7 +119,7 @@ export default function MarketsSection() {
             </linearGradient>
           </defs>
           <path d="M0,35 Q10,30 20,32 T40,20 T60,25 Q70,10 80,5 T100,10 L100,40 L0,40 Z" fill="url(#chartGradient)" />
-          <m.path 
+          <motion.path 
             d="M0,35 Q10,30 20,32 T40,20 T60,25 Q70,10 80,5 T100,10" 
             fill="none" stroke="#84cc16" strokeWidth="2"
             initial={{ pathLength: 0 }} whileInView={{ pathLength: 1 }} transition={{ duration: 1.5, ease: "easeInOut" }}
@@ -127,14 +135,16 @@ export default function MarketsSection() {
       
       <div className="flex items-center justify-between mb-4 relative z-10">
         <span className="text-xs font-bold text-lime-800/50 dark:text-lime-200/40 uppercase tracking-wider flex items-center gap-2">
-          <Flame size={14} className="text-orange-500" /> Market Pulse
+          <Flame size={14} className="text-orange-500" /> {t("marketPulse")}
         </span>
-        <span className="text-[10px] font-mono text-lime-600 dark:text-lime-400 bg-lime-500/10 px-2 py-0.5 rounded animate-pulse">LIVE</span>
+        <span className="text-[10px] font-mono text-lime-600 dark:text-lime-400 bg-lime-500/10 px-2 py-0.5 rounded animate-pulse">
+          {t("live")}
+        </span>
       </div>
 
       <div className="relative h-[60px] w-full">
         <AnimatePresence mode="wait">
-          <m.div
+          <motion.div
             key={currentIndex}
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -163,14 +173,14 @@ export default function MarketsSection() {
                 <TrendingUp size={12} /> {trendingAssets[currentIndex].change}
               </div>
             </div>
-          </m.div>
+          </motion.div>
         </AnimatePresence>
       </div>
     </div>
   );
 
   return (
-    <m.div 
+    <motion.div 
       initial={{ opacity: 0, y: 40 }} 
       whileInView={{ opacity: 1, y: 0 }} 
       viewport={{ once: true, margin: "-100px" }} 
@@ -181,20 +191,18 @@ export default function MarketsSection() {
       
       {/* 1. TEXT AND DESKTOP CARDS (Left Column on Desktop) */}
       <div className="order-1 md:col-start-1 md:row-start-1 lg:col-start-1 lg:row-start-1 lg:row-span-2 flex flex-col gap-12 w-full min-w-0">
-        {/* Text Container - Centered on Mobile, Left-Aligned on Tablet/Desktop */}
         <div className="text-center md:text-left flex flex-col items-center md:items-start">
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-lime-950 dark:text-[#ecfdf5] tracking-tight mb-6 leading-tight relative z-20">
-            Grow your profit and <br className="hidden sm:block"/> track your investments
+            {t("heading1")} <br className="hidden sm:block"/> {t("heading2")}
           </h2>
           <p className="text-base text-lime-800/70 dark:text-lime-200/60 font-medium leading-relaxed mb-8 max-w-md relative z-20 mx-auto md:mx-0">
-            Use advanced analytical tools. Clear TradingView charts let you track current and historical profit investments seamlessly across crypto and global fiat currencies.
+            {t("subheading")}
           </p>
           <Link href="/login" className="md:hidden lg:inline-flex relative z-20 items-center justify-center px-6 py-3 rounded-xl bg-lime-600 text-white font-bold hover:bg-lime-700 transition-colors shadow-lg shadow-lime-600/20 w-fit mx-auto md:mx-0">
-            Start Learning
+            {t("cta")}
           </Link>
         </div>
 
-        {/* Desktop Cards (Hidden on Mobile/Tablet) */}
         <div className="hidden lg:flex flex-col gap-6 w-full h-full justify-between">
           {portfolioCard}
           {marketPulseCard}
@@ -204,20 +212,20 @@ export default function MarketsSection() {
       {/* 2. GLOBE (Tablet & Desktop - Top Right) */}
       <div className="hidden md:flex order-2 md:col-start-2 md:row-start-1 lg:col-start-2 lg:row-start-1 justify-center md:justify-end w-full">
         <div className="flex flex-col items-center justify-center p-8 bg-lime-500/5 rounded-[2.5rem] border border-lime-500/10 w-full max-w-sm">
-          <m.div 
+          <motion.div 
             animate={{ y: [0, -8, 0] }} 
             transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
             className="w-32 h-32 sm:w-40 sm:h-40 rounded-[2rem] bg-white/40 dark:bg-[#0a0f0b]/60 backdrop-blur-xl border border-lime-500/30 shadow-[0_8px_32px_0_rgba(132,204,22,0.15)] flex items-center justify-center z-10"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-20 h-20 sm:w-24 sm:h-24 text-lime-600 dark:text-lime-400 drop-shadow-[0_0_12px_rgba(132,204,22,0.8)]">
               <circle cx="12" cy="12" r="10" /><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" /><path d="M2 12h20" />
-              <m.circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none" animate={{ scale: [1, 1.5, 1], opacity: [1, 0.5, 1] }} transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }} />
-              <m.circle cx="16" cy="8" r="1" fill="currentColor" stroke="none" animate={{ scale: [1, 1.8, 1], opacity: [1, 0.3, 1] }} transition={{ repeat: Infinity, duration: 2.5, ease: "easeInOut", delay: 0.5 }} />
-              <m.circle cx="7" cy="15" r="1" fill="currentColor" stroke="none" animate={{ scale: [1, 1.8, 1], opacity: [1, 0.3, 1] }} transition={{ repeat: Infinity, duration: 3, ease: "easeInOut", delay: 1 }} />
+              <motion.circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none" animate={{ scale: [1, 1.5, 1], opacity: [1, 0.5, 1] }} transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }} />
+              <motion.circle cx="16" cy="8" r="1" fill="currentColor" stroke="none" animate={{ scale: [1, 1.8, 1], opacity: [1, 0.3, 1] }} transition={{ repeat: Infinity, duration: 2.5, ease: "easeInOut", delay: 0.5 }} />
+              <motion.circle cx="7" cy="15" r="1" fill="currentColor" stroke="none" animate={{ scale: [1, 1.8, 1], opacity: [1, 0.3, 1] }} transition={{ repeat: Infinity, duration: 3, ease: "easeInOut", delay: 1 }} />
             </svg>
-          </m.div>
+          </motion.div>
           <Link href="/login" className="mt-8 inline-flex items-center justify-center px-8 py-3 rounded-xl bg-lime-600 text-white font-bold hover:bg-lime-700 transition-colors shadow-lg shadow-lime-600/20 w-full text-center">
-            Start Learning
+            {t("cta")}
           </Link>
         </div>
       </div>
@@ -233,7 +241,7 @@ export default function MarketsSection() {
         {marketPulseCard}
       </div>
 
-    </m.div>
+    </motion.div>
   );
 }
 // "use client";
@@ -267,15 +275,18 @@ export default function MarketsSection() {
 //   }, []);
 
 //   const marketTable = (
-//     <div className="relative bg-white/60 dark:bg-[#0a0f0b]/60 backdrop-blur-xl border border-lime-500/20 rounded-3xl p-6 shadow-2xl w-full h-full flex flex-col">
-//       <div className="flex justify-between items-center mb-6 px-2">
-//         <span className="text-xs font-bold text-lime-800/50 dark:text-lime-200/40 uppercase tracking-wider">Asset</span>
-//         <div className="flex gap-8 text-right">
-//           <span className="text-xs font-bold text-lime-800/50 dark:text-lime-200/40 uppercase tracking-wider w-20">Price</span>
-//           <span className="text-xs font-bold text-lime-800/50 dark:text-lime-200/40 uppercase tracking-wider w-16">Change</span>
+//     <div className="relative bg-white/60 dark:bg-[#0a0f0b]/60 backdrop-blur-xl border border-lime-500/20 rounded-3xl p-4 sm:p-6 shadow-2xl w-full h-full flex flex-col overflow-hidden">
+      
+//       {/* HEADER ROW */}
+//       <div className="flex justify-between items-center mb-4 sm:mb-6 px-1 sm:px-2">
+//         <span className="text-[10px] sm:text-xs font-bold text-lime-800/50 dark:text-lime-200/40 uppercase tracking-wider">Asset</span>
+//         <div className="flex gap-2 sm:gap-8 text-right shrink-0">
+//           <span className="text-[10px] sm:text-xs font-bold text-lime-800/50 dark:text-lime-200/40 uppercase tracking-wider w-16 sm:w-20">Price</span>
+//           <span className="text-[10px] sm:text-xs font-bold text-lime-800/50 dark:text-lime-200/40 uppercase tracking-wider w-14 sm:w-16">Change</span>
 //         </div>
 //       </div>
       
+//       {/* LIST */}
 //       <div className="space-y-2 flex-1">
 //         {[
 //           { name: 'Bitcoin', symbol: 'BTC', price: '$6,750', change: '+7.3%', up: true, color: 'bg-orange-500' },
@@ -284,21 +295,34 @@ export default function MarketsSection() {
 //           { name: 'British Pound', symbol: 'GBP', price: '₦1,820', change: '+0.4%', up: true, color: 'bg-indigo-500' },
 //           { name: 'Japanese Yen', symbol: 'JPY', price: '₦9.50', change: '-0.1%', up: false, color: 'bg-red-500' },
 //         ].map((asset, i) => (
-//           <div key={asset.symbol} className={`flex items-center justify-between p-4 rounded-2xl transition-colors ${i === 1 ? 'bg-lime-500/10 dark:bg-lime-500/10 border border-lime-500/20' : 'hover:bg-lime-500/5'}`}>
-//             <div className="flex items-center gap-3">
-//               <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold ${asset.color}`}>{asset.symbol.charAt(0)}</div>
-//               <div>
-//                 <div className="text-sm font-bold text-lime-950 dark:text-white">{asset.symbol}</div>
-//                 <div className="text-xs text-lime-800/60 dark:text-lime-200/50">{asset.name}</div>
+//           <div key={asset.symbol} className={`flex items-center justify-between p-3 sm:p-4 rounded-2xl transition-colors ${i === 1 ? 'bg-lime-500/10 dark:bg-lime-500/10 border border-lime-500/20' : 'hover:bg-lime-500/5'}`}>
+            
+//             {/* LEFT SIDE (Asset Info) */}
+//             <div className="flex items-center gap-2 sm:gap-3 min-w-0 mr-2">
+//               <div className={`w-8 h-8 sm:w-10 sm:h-10 shrink-0 rounded-full flex items-center justify-center text-white font-bold text-xs sm:text-base ${asset.color}`}>
+//                 {asset.symbol.charAt(0)}
+//               </div>
+//               <div className="min-w-0">
+//                 <div className="text-xs sm:text-sm font-bold text-lime-950 dark:text-white truncate">
+//                   {asset.symbol}
+//                 </div>
+//                 <div className="text-[10px] sm:text-xs text-lime-800/60 dark:text-lime-200/50 truncate">
+//                   {asset.name}
+//                 </div>
 //               </div>
 //             </div>
-//             <div className="flex gap-8 text-right">
-//               <span className="text-sm font-bold text-lime-950 dark:text-white w-20">{asset.price}</span>
-//               <span className={`text-sm font-bold w-16 flex items-center justify-end gap-1 ${asset.up ? 'text-green-500' : 'text-red-500'}`}>
-//                 {asset.up ? <TrendingUp size={14}/> : <TrendingUp size={14} className="rotate-180"/>}
-//                 {asset.change}
+
+//             {/* RIGHT SIDE (Prices) */}
+//             <div className="flex gap-2 sm:gap-8 text-right shrink-0 items-center">
+//               <span className="text-xs sm:text-sm font-bold text-lime-950 dark:text-white w-16 sm:w-20 truncate">
+//                 {asset.price}
+//               </span>
+//               <span className={`text-[10px] sm:text-sm font-bold w-14 sm:w-16 flex items-center justify-end gap-0.5 sm:gap-1 ${asset.up ? 'text-green-500' : 'text-red-500'}`}>
+//                 {asset.up ? <TrendingUp size={12} className="shrink-0" /> : <TrendingUp size={12} className="rotate-180 shrink-0" />}
+//                 <span className="truncate">{asset.change}</span>
 //               </span>
 //             </div>
+
 //           </div>
 //         ))}
 //       </div>
@@ -402,7 +426,7 @@ export default function MarketsSection() {
 //     >
       
 //       {/* 1. TEXT AND DESKTOP CARDS (Left Column on Desktop) */}
-//       <div className="order-1 md:col-start-1 md:row-start-1 lg:col-start-1 lg:row-start-1 lg:row-span-2 flex flex-col gap-12 w-full">
+//       <div className="order-1 md:col-start-1 md:row-start-1 lg:col-start-1 lg:row-start-1 lg:row-span-2 flex flex-col gap-12 w-full min-w-0">
 //         {/* Text Container - Centered on Mobile, Left-Aligned on Tablet/Desktop */}
 //         <div className="text-center md:text-left flex flex-col items-center md:items-start">
 //           <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-lime-950 dark:text-[#ecfdf5] tracking-tight mb-6 leading-tight relative z-20">
@@ -445,12 +469,12 @@ export default function MarketsSection() {
 //       </div>
 
 //       {/* 3. TABLE (Mobile: Bottom, Tablet: Bottom Left, Desktop: Bottom Right) */}
-//       <div className="order-3 md:col-start-1 md:row-start-2 lg:col-start-2 lg:row-start-2 w-full lg:h-full">
+//       <div className="order-3 md:col-start-1 md:row-start-2 lg:col-start-2 lg:row-start-2 w-full lg:h-full min-w-0">
 //         {marketTable}
 //       </div>
 
 //       {/* 4. CARDS (Mobile: Bottom, Tablet: Bottom Right. Hidden on Desktop because they are in Col 1) */}
-//       <div className="order-4 md:col-start-2 md:row-start-2 flex lg:hidden flex-col gap-6 w-full">
+//       <div className="order-4 md:col-start-2 md:row-start-2 flex lg:hidden flex-col gap-6 w-full min-w-0">
 //         {portfolioCard}
 //         {marketPulseCard}
 //       </div>

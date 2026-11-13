@@ -4,27 +4,23 @@
 import { 
   generateRegistrationOptions, 
   verifyRegistrationResponse,
-  generateAuthenticationOptions,
+  generateAuthenticationOptions, 
   verifyAuthenticationResponse
 } from '@simplewebauthn/server';
+import mongoose from 'mongoose'; 
 import { adminAuth } from '@/lib/firebase-admin';
 import { getServerSession } from '@/lib/session';
 import { Authenticator, IAuthenticator } from '@/lib/models/Authenticator';
 import User from '@/lib/models/User';
 import connectDB from '@/lib/db';
+import { createSystemNotification } from '@/lib/models/Notification'; 
 import { 
   setChallengeCookie, readChallengeCookie, clearChallengeCookie, 
   CHALLENGE_COOKIE_REGISTER, CHALLENGE_COOKIE_LOGIN, 
   RP_ID, RP_NAME, ORIGIN 
 } from '@/lib/webauthn';
 
-// ==========================================
-// REGISTRATION FLOW
-// ==========================================
-
-// 1. GENERATE REGISTRATION OPTIONS (User must be logged in)
-// Note: Throws on error. Client must have try/catch.
-export async function getRegistrationOptions() {
+export async function getRegistrationOptions(): Promise<any> {
   const session = await getServerSession();
   if (!session) throw new Error("Unauthorized. Please log in.");
   await connectDB();
@@ -44,23 +40,16 @@ export async function getRegistrationOptions() {
   });
 
   await setChallengeCookie(CHALLENGE_COOKIE_REGISTER, options.challenge);
-  return options;
+  return JSON.parse(JSON.stringify(options));
 }
 
-// 2. VERIFY REGISTRATION
-export async function verifyRegistration(
-  attestationResponse: any
-): Promise<{ success: true } | { success: false; error: string }> {
+export async function verifyRegistration(attestationResponse: any): Promise<any> {
   try {
     const session = await getServerSession();
-    if (!session) {
-      return { success: false, error: "Unauthorized. Please log in." };
-    }
+    if (!session) return { success: false, error: "Unauthorized. Please log in." };
 
     const expectedChallenge = await readChallengeCookie(CHALLENGE_COOKIE_REGISTER);
-    if (!expectedChallenge) {
-      return { success: false, error: "Challenge expired. Please try again." };
-    }
+    if (!expectedChallenge) return { success: false, error: "Challenge expired. Please try again." };
 
     const verification = await verifyRegistrationResponse({
       response: attestationResponse,
@@ -76,45 +65,40 @@ export async function verifyRegistration(
     const { credential } = verification.registrationInfo;
     
     await Authenticator.create({
-      userId: session.id,
+      userId: new mongoose.Types.ObjectId(session.id), 
       credentialID: credential.id,
       credentialPublicKey: Buffer.from(credential.publicKey).toString('base64'),
       counter: credential.counter,
       transports: attestationResponse.response.transports || [],
     });
+    
     await clearChallengeCookie(CHALLENGE_COOKIE_REGISTER);
+
+    await createSystemNotification(
+      session.id,
+      "alert",
+      "Security Alert: Passkey Added",
+      "A new passkey was added to your account. If this wasn't you, contact support immediately.",
+      "/dashboard/settings"
+    );
+
     return { success: true };
   } catch (error: any) {
     console.error("Registration verification error:", error);
-    return { 
-      success: false, 
-      error: error.message || "Failed to verify registration. Please try again." 
-    };
+    return { success: false, error: error.message || "Failed to verify registration." };
   }
 }
 
-// ==========================================
-// AUTHENTICATION FLOW
-// ==========================================
-
-// 3. GENERATE LOGIN OPTIONS (Public route)
-// Note: Throws on error. Client must have try/catch.
-export async function getAuthenticationOptions() {
+export async function getAuthenticationOptions(): Promise<any> {
   const options = await generateAuthenticationOptions({
     rpID: RP_ID,
     userVerification: 'preferred',
   });
   await setChallengeCookie(CHALLENGE_COOKIE_LOGIN, options.challenge);
-  return options;
+  return JSON.parse(JSON.stringify(options));
 }
 
-// 4. VERIFY LOGIN & RETURN CUSTOM TOKEN
-export async function verifyAuthentication(
-  assertionResponse: any
-): Promise<
-  | { success: true; customToken: string }
-  | { success: false; error: string }
-> {
+export async function verifyAuthentication(assertionResponse: any): Promise<any> {
   try {
     await connectDB();
     
@@ -122,57 +106,910 @@ export async function verifyAuthentication(
       credentialID: assertionResponse.id 
     }) as IAuthenticator | null;
     
-    if (!authenticator) {
-      return { 
-        success: false, 
-        error: "Passkey not recognized. Please sign in with email or Google." 
-      };
-    }
+    if (!authenticator) return { success: false, error: "Passkey not recognized. Please sign in with email or Google." };
 
     const expectedChallenge = await readChallengeCookie(CHALLENGE_COOKIE_LOGIN);
-    if (!expectedChallenge) {
-      return { success: false, error: "Challenge expired. Please try again." };
-    }
+    if (!expectedChallenge) return { success: false, error: "Challenge expired. Please try again." };
 
     const verification = await verifyAuthenticationResponse({
       response: assertionResponse,
       expectedChallenge,
       expectedOrigin: ORIGIN,
       expectedRPID: RP_ID,
-      // 👇 v14 uses 'credential' key (not 'authenticator')
       credential: {
         id: authenticator.credentialID, 
-        publicKey: Buffer.from(authenticator.credentialPublicKey, 'base64'),
+        publicKey: new Uint8Array(Buffer.from(authenticator.credentialPublicKey, 'base64')),
         counter: authenticator.counter,
-        transports: authenticator.transports as any,
+        transports: (authenticator.transports || []) as any, 
       },
     });
 
-    if (!verification.verified) {
-      return { success: false, error: "Passkey verification failed. Please try again." };
-    }
+    if (!verification.verified) return { success: false, error: "Passkey verification failed. Please try again." };
 
-    // Update counter to prevent replay attacks
     authenticator.counter = verification.authenticationInfo.newCounter;
     await authenticator.save();
     await clearChallengeCookie(CHALLENGE_COOKIE_LOGIN);
 
     const user = await User.findById(authenticator.userId);
-    if (!user) {
-      return { success: false, error: "User account not found." };
-    }
+    if (!user || !user.firebaseUid) return { success: false, error: "User account not found." };
 
     const customToken = await adminAuth.createCustomToken(user.firebaseUid);
-    
     return { success: true, customToken };
   } catch (error: any) {
     console.error("Authentication verification error:", error);
-    return { 
-      success: false, 
-      error: error.message || "Failed to verify authentication. Please try again." 
-    };
+    return { success: false, error: error.message || "Failed to verify authentication." };
   }
 }
+
+
+// // app/actions/webauthn.ts
+// "use server";
+
+// import { 
+//   generateRegistrationOptions, 
+//   verifyRegistrationResponse,
+//   generateAuthenticationOptions, 
+//   verifyAuthenticationResponse
+// } from '@simplewebauthn/server';
+// import mongoose from 'mongoose'; 
+// import { adminAuth } from '@/lib/firebase-admin';
+// import { getServerSession } from '@/lib/session';
+// import { Authenticator, IAuthenticator } from '@/lib/models/Authenticator';
+// import User from '@/lib/models/User';
+// import connectDB from '@/lib/db';
+// import { createSystemNotification } from '@/lib/models/Notification'; 
+// import { 
+//   setChallengeCookie, readChallengeCookie, clearChallengeCookie, 
+//   CHALLENGE_COOKIE_REGISTER, CHALLENGE_COOKIE_LOGIN, 
+//   RP_ID, RP_NAME, ORIGIN 
+// } from '@/lib/webauthn';
+
+// // ==========================================
+// // REGISTRATION FLOW
+// // ==========================================
+
+// export async function getRegistrationOptions(): Promise<any> {
+//   const session = await getServerSession();
+//   if (!session) throw new Error("Unauthorized. Please log in.");
+//   await connectDB();
+
+//   const userAuthenticators = await Authenticator.find({ userId: session.id });
+
+//   const options = await generateRegistrationOptions({
+//     rpName: RP_NAME,
+//     rpID: RP_ID,
+//     userID: new TextEncoder().encode(session.id), 
+//     userName: session.displayName,
+//     attestationType: 'none',
+//     excludeCredentials: userAuthenticators.map(auth => ({
+//       id: auth.credentialID,
+//       type: 'public-key',
+//     })),
+//   });
+
+//   await setChallengeCookie(CHALLENGE_COOKIE_REGISTER, options.challenge);
+//   return JSON.parse(JSON.stringify(options));
+// }
+
+// export async function verifyRegistration(attestationResponse: any): Promise<any> {
+//   try {
+//     const session = await getServerSession();
+//     if (!session) return { success: false, error: "Unauthorized. Please log in." };
+
+//     const expectedChallenge = await readChallengeCookie(CHALLENGE_COOKIE_REGISTER);
+//     if (!expectedChallenge) return { success: false, error: "Challenge expired. Please try again." };
+
+//     const verification = await verifyRegistrationResponse({
+//       response: attestationResponse,
+//       expectedChallenge,
+//       expectedOrigin: ORIGIN,
+//       expectedRPID: RP_ID,
+//     });
+
+//     if (!verification.verified || !verification.registrationInfo) {
+//       return { success: false, error: "Biometric verification failed. Please try again." };
+//     }
+
+//     const { credential } = verification.registrationInfo;
+    
+//     await Authenticator.create({
+//       userId: new mongoose.Types.ObjectId(session.id), 
+//       credentialID: credential.id,
+//       credentialPublicKey: Buffer.from(credential.publicKey).toString('base64'),
+//       counter: credential.counter,
+//       transports: attestationResponse.response.transports || [],
+//     });
+    
+//     await clearChallengeCookie(CHALLENGE_COOKIE_REGISTER);
+
+//     await createSystemNotification(
+//       session.id,
+//       "alert",
+//       "Security Alert: Passkey Added",
+//       "A new passkey was added to your account. If this wasn't you, contact support immediately.",
+//       "/dashboard/settings"
+//     );
+
+//     return { success: true };
+//   } catch (error: any) {
+//     console.error("Registration verification error:", error);
+//     return { success: false, error: error.message || "Failed to verify registration." };
+//   }
+// }
+
+// // ==========================================
+// // AUTHENTICATION FLOW
+// // ==========================================
+
+// export async function getAuthenticationOptions(): Promise<any> {
+//   const options = await generateAuthenticationOptions({
+//     rpID: RP_ID,
+//     userVerification: 'preferred',
+//   });
+//   await setChallengeCookie(CHALLENGE_COOKIE_LOGIN, options.challenge);
+//   return JSON.parse(JSON.stringify(options));
+// }
+
+// export async function verifyAuthentication(assertionResponse: any): Promise<any> {
+//   try {
+//     await connectDB();
+    
+//     const authenticator = await Authenticator.findOne({ 
+//       credentialID: assertionResponse.id 
+//     }) as IAuthenticator | null;
+    
+//     if (!authenticator) return { success: false, error: "Passkey not recognized. Please sign in with email or Google." };
+
+//     const expectedChallenge = await readChallengeCookie(CHALLENGE_COOKIE_LOGIN);
+//     if (!expectedChallenge) return { success: false, error: "Challenge expired. Please try again." };
+
+//     const verification = await verifyAuthenticationResponse({
+//       response: assertionResponse,
+//       expectedChallenge,
+//       expectedOrigin: ORIGIN,
+//       expectedRPID: RP_ID,
+//       credential: {
+//         id: authenticator.credentialID, 
+//         publicKey: new Uint8Array(Buffer.from(authenticator.credentialPublicKey, 'base64')),
+//         counter: authenticator.counter,
+//         transports: (authenticator.transports || []) as any, 
+//       },
+//     });
+
+//     if (!verification.verified) return { success: false, error: "Passkey verification failed. Please try again." };
+
+//     authenticator.counter = verification.authenticationInfo.newCounter;
+//     await authenticator.save();
+//     await clearChallengeCookie(CHALLENGE_COOKIE_LOGIN);
+
+//     const user = await User.findById(authenticator.userId);
+//     if (!user || !user.firebaseUid) return { success: false, error: "User account not found." };
+
+//     const customToken = await adminAuth.createCustomToken(user.firebaseUid);
+//     return { success: true, customToken };
+//   } catch (error: any) {
+//     console.error("Authentication verification error:", error);
+//     return { success: false, error: error.message || "Failed to verify authentication." };
+//   }
+// }
+
+
+
+
+
+
+
+
+// // app/actions/webauthn.ts
+// "use server";
+
+// import { 
+
+//   generateRegistrationOptions, 
+//   verifyRegistrationResponse,
+//   generateAuthenticationOptions, 
+//   verifyAuthenticationResponse,
+//   type AuthenticatorTransportFuture,
+//   type PublicKeyCredentialRequestOptionsJSON // 👈 Imported for strict typing
+// } from '@simplewebauthn/server';
+// import { adminAuth } from '@/lib/firebase-admin';
+// import { getServerSession } from '@/lib/session';
+// import { Authenticator, IAuthenticator } from '@/lib/models/Authenticator';
+// import User from '@/lib/models/User';
+// import connectDB from '@/lib/db';
+// import { createSystemNotification } from '@/lib/models/Notification'; 
+// import { 
+//   setChallengeCookie, readChallengeCookie, clearChallengeCookie, 
+//   CHALLENGE_COOKIE_REGISTER, CHALLENGE_COOKIE_LOGIN, 
+//   RP_ID, RP_NAME, ORIGIN 
+// } from '@/lib/webauthn';
+
+// export async function getRegistrationOptions() {
+//   const session = await getServerSession();
+//   if (!session) throw new Error("Unauthorized. Please log in.");
+//   await connectDB();
+
+//   const userAuthenticators = await Authenticator.find({ userId: session.id });
+
+//   const options = await generateRegistrationOptions({
+//     rpName: RP_NAME,
+//     rpID: RP_ID,
+//     userID: new TextEncoder().encode(session.id), 
+//     userName: session.displayName,
+//     attestationType: 'none',
+//     excludeCredentials: userAuthenticators.map(auth => ({
+//       id: auth.credentialID,
+//       type: 'public-key',
+//     })),
+//   });
+
+//   await setChallengeCookie(CHALLENGE_COOKIE_REGISTER, options.challenge);
+//   return options;
+// }
+
+// export async function verifyRegistration(
+//   attestationResponse: any
+// ): Promise<{ success: true } | { success: false; error: string }> {
+//   try {
+//     const session = await getServerSession();
+//     if (!session) {
+//       return { success: false, error: "Unauthorized. Please log in." };
+//     }
+
+//     const expectedChallenge = await readChallengeCookie(CHALLENGE_COOKIE_REGISTER);
+//     if (!expectedChallenge) {
+//       return { success: false, error: "Challenge expired. Please try again." };
+//     }
+
+//     const verification = await verifyRegistrationResponse({
+//       response: attestationResponse,
+//       expectedChallenge,
+//       expectedOrigin: ORIGIN,
+//       expectedRPID: RP_ID,
+//     });
+
+//     if (!verification.verified || !verification.registrationInfo) {
+//       return { success: false, error: "Biometric verification failed. Please try again." };
+//     }
+
+//     const { credential } = verification.registrationInfo;
+    
+//     await Authenticator.create({
+//       userId: session.id,
+//       credentialID: credential.id,
+//       credentialPublicKey: Buffer.from(credential.publicKey).toString('base64'),
+//       counter: credential.counter,
+//       transports: attestationResponse.response.transports || [],
+//     });
+    
+//     await clearChallengeCookie(CHALLENGE_COOKIE_REGISTER);
+
+//     await createSystemNotification(
+//       session.id,
+//       "alert",
+//       "Security Alert: Passkey Added",
+//       "A new passkey was added to your account. If this wasn't you, contact support immediately.",
+//       "/dashboard/settings"
+//     );
+
+//     return { success: true };
+//   } catch (error: any) {
+//     console.error("Registration verification error:", error);
+//     return { 
+//       success: false, 
+//       error: error.message || "Failed to verify registration. Please try again." 
+//     };
+//   }
+// }
+
+// // 👇 FIXED: Added explicit return type to resolve the red underline
+// export async function getAuthenticationOptions(): Promise<PublicKeyCredentialRequestOptionsJSON> {
+//   const options = await generateAuthenticationOptions({
+//     rpID: RP_ID,
+//     userVerification: 'preferred',
+//   });
+//   await setChallengeCookie(CHALLENGE_COOKIE_LOGIN, options.challenge);
+//   return options;
+// }
+
+// export async function verifyAuthentication(
+//   assertionResponse: any
+// ): Promise<
+//   | { success: true; customToken: string }
+//   | { success: false; error: string }
+// > {
+//   try {
+//     await connectDB();
+    
+//     const authenticator = await Authenticator.findOne({ 
+//       credentialID: assertionResponse.id 
+//     }) as IAuthenticator | null;
+    
+//     if (!authenticator) {
+//       return { success: false, error: "Passkey not recognized. Please sign in with email or Google." };
+//     }
+
+//     const expectedChallenge = await readChallengeCookie(CHALLENGE_COOKIE_LOGIN);
+//     if (!expectedChallenge) {
+//       return { success: false, error: "Challenge expired. Please try again." };
+//     }
+
+//     const verification = await verifyAuthenticationResponse({
+//       response: assertionResponse,
+//       expectedChallenge,
+//       expectedOrigin: ORIGIN,
+//       expectedRPID: RP_ID,
+//       credential: {
+//         id: authenticator.credentialID, 
+//         // 👇 FIXED: Buffer is a valid Uint8Array, and explicitly casting transports fixes the type error
+//         publicKey: Buffer.from(authenticator.credentialPublicKey, 'base64'),
+//         counter: authenticator.counter,
+//         transports: (authenticator.transports || []) as AuthenticatorTransportFuture[],
+//       },
+//     });
+
+//     if (!verification.verified) {
+//       return { success: false, error: "Passkey verification failed. Please try again." };
+//     }
+
+//     authenticator.counter = verification.authenticationInfo.newCounter;
+//     await authenticator.save();
+//     await clearChallengeCookie(CHALLENGE_COOKIE_LOGIN);
+
+//     const user = await User.findById(authenticator.userId);
+//     if (!user) {
+//       return { success: false, error: "User account not found." };
+//     }
+
+//     const customToken = await adminAuth.createCustomToken(user.firebaseUid);
+    
+//     return { success: true, customToken };
+//   } catch (error: any) {
+//     console.error("Authentication verification error:", error);
+//     return { success: false, error: error.message || "Failed to verify authentication. Please try again." };
+//   }
+// }
+
+
+
+
+
+
+
+
+
+
+
+// // app/actions/webauthn.ts
+// "use server";
+
+// import { 
+//   generateRegistrationOptions, 
+//   verifyRegistrationResponse,
+//   generateAuthenticationOptions, // 👈 This is the library function
+//   verifyAuthenticationResponse
+// } from '@simplewebauthn/server';
+// import { adminAuth } from '@/lib/firebase-admin';
+// import { getServerSession } from '@/lib/session';
+// import { Authenticator, IAuthenticator } from '@/lib/models/Authenticator';
+// import User from '@/lib/models/User';
+// import connectDB from '@/lib/db';
+// import { createSystemNotification } from '@/lib/models/Notification'; 
+// import { 
+//   setChallengeCookie, readChallengeCookie, clearChallengeCookie, 
+//   CHALLENGE_COOKIE_REGISTER, CHALLENGE_COOKIE_LOGIN, 
+//   RP_ID, RP_NAME, ORIGIN 
+// } from '@/lib/webauthn';
+
+// export async function getRegistrationOptions() {
+//   const session = await getServerSession();
+//   if (!session) throw new Error("Unauthorized. Please log in.");
+//   await connectDB();
+
+//   const userAuthenticators = await Authenticator.find({ userId: session.id });
+
+//   const options = await generateRegistrationOptions({
+//     rpName: RP_NAME,
+//     rpID: RP_ID,
+//     userID: new TextEncoder().encode(session.id), 
+//     userName: session.displayName,
+//     attestationType: 'none',
+//     excludeCredentials: userAuthenticators.map(auth => ({
+//       id: auth.credentialID,
+//       type: 'public-key',
+//     })),
+//   });
+
+//   await setChallengeCookie(CHALLENGE_COOKIE_REGISTER, options.challenge);
+//   return options;
+// }
+
+// export async function verifyRegistration(
+//   attestationResponse: any
+// ): Promise<{ success: true } | { success: false; error: string }> {
+//   try {
+//     const session = await getServerSession();
+//     if (!session) {
+//       return { success: false, error: "Unauthorized. Please log in." };
+//     }
+
+//     const expectedChallenge = await readChallengeCookie(CHALLENGE_COOKIE_REGISTER);
+//     if (!expectedChallenge) {
+//       return { success: false, error: "Challenge expired. Please try again." };
+//     }
+
+//     const verification = await verifyRegistrationResponse({
+//       response: attestationResponse,
+//       expectedChallenge,
+//       expectedOrigin: ORIGIN,
+//       expectedRPID: RP_ID,
+//     });
+
+//     if (!verification.verified || !verification.registrationInfo) {
+//       return { success: false, error: "Biometric verification failed. Please try again." };
+//     }
+
+//     const { credential } = verification.registrationInfo;
+    
+//     await Authenticator.create({
+//       userId: session.id,
+//       credentialID: credential.id,
+//       credentialPublicKey: Buffer.from(credential.publicKey).toString('base64'),
+//       counter: credential.counter,
+//       transports: attestationResponse.response.transports || [],
+//     });
+    
+//     await clearChallengeCookie(CHALLENGE_COOKIE_REGISTER);
+
+//     await createSystemNotification(
+//       session.id,
+//       "alert",
+//       "Security Alert: Passkey Added",
+//       "A new passkey was added to your account. If this wasn't you, contact support immediately.",
+//       "/dashboard/settings"
+//     );
+
+//     return { success: true };
+//   } catch (error: any) {
+//     console.error("Registration verification error:", error);
+//     return { 
+//       success: false, 
+//       error: error.message || "Failed to verify registration. Please try again." 
+//     };
+//   }
+// }
+
+// // 👇 THIS IS THE CUSTOM FUNCTION YOUR CLIENT IS TRYING TO IMPORT
+// export async function getAuthenticationOptions() {
+//   const options = await generateAuthenticationOptions({
+//     rpID: RP_ID,
+//     userVerification: 'preferred',
+//   });
+//   await setChallengeCookie(CHALLENGE_COOKIE_LOGIN, options.challenge);
+//   return options;
+// }
+
+// export async function verifyAuthentication(
+//   assertionResponse: any
+// ): Promise<
+//   | { success: true; customToken: string }
+//   | { success: false; error: string }
+// > {
+//   try {
+//     await connectDB();
+    
+//     const authenticator = await Authenticator.findOne({ 
+//       credentialID: assertionResponse.id 
+//     }) as IAuthenticator | null;
+    
+//     if (!authenticator) {
+//       return { success: false, error: "Passkey not recognized. Please sign in with email or Google." };
+//     }
+
+//     const expectedChallenge = await readChallengeCookie(CHALLENGE_COOKIE_LOGIN);
+//     if (!expectedChallenge) {
+//       return { success: false, error: "Challenge expired. Please try again." };
+//     }
+
+//     const verification = await verifyAuthenticationResponse({
+//       response: assertionResponse,
+//       expectedChallenge,
+//       expectedOrigin: ORIGIN,
+//       expectedRPID: RP_ID,
+//       credential: {
+//         id: authenticator.credentialID, 
+//         publicKey: Buffer.from(authenticator.credentialPublicKey, 'base64'),
+//         counter: authenticator.counter,
+//         transports: authenticator.transports as any,
+//       },
+//     });
+
+//     if (!verification.verified) {
+//       return { success: false, error: "Passkey verification failed. Please try again." };
+//     }
+
+//     authenticator.counter = verification.authenticationInfo.newCounter;
+//     await authenticator.save();
+//     await clearChallengeCookie(CHALLENGE_COOKIE_LOGIN);
+
+//     const user = await User.findById(authenticator.userId);
+//     if (!user) {
+//       return { success: false, error: "User account not found." };
+//     }
+
+//     const customToken = await adminAuth.createCustomToken(user.firebaseUid);
+    
+//     return { success: true, customToken };
+//   } catch (error: any) {
+//     console.error("Authentication verification error:", error);
+//     return { success: false, error: error.message || "Failed to verify authentication. Please try again." };
+//   }
+// }
+
+
+
+
+
+
+// // app/actions/webauthn.ts
+// "use server";
+
+// import { 
+//   generateRegistrationOptions, 
+//   verifyRegistrationResponse,
+//   generateAuthenticationOptions,
+//   verifyAuthenticationResponse
+// } from '@simplewebauthn/server';
+// import { adminAuth } from '@/lib/firebase-admin';
+// import { getServerSession } from '@/lib/session';
+// import { Authenticator, IAuthenticator } from '@/lib/models/Authenticator';
+// import User from '@/lib/models/User';
+// import connectDB from '@/lib/db';
+// import { createSystemNotification } from '@/lib/models/Notification'; // 👈 Added
+// import { 
+//   setChallengeCookie, readChallengeCookie, clearChallengeCookie, 
+//   CHALLENGE_COOKIE_REGISTER, CHALLENGE_COOKIE_LOGIN, 
+//   RP_ID, RP_NAME, ORIGIN 
+// } from '@/lib/webauthn';
+
+// export async function getRegistrationOptions() {
+//   const session = await getServerSession();
+//   if (!session) throw new Error("Unauthorized. Please log in.");
+//   await connectDB();
+
+//   const userAuthenticators = await Authenticator.find({ userId: session.id });
+
+//   const options = await generateRegistrationOptions({
+//     rpName: RP_NAME,
+//     rpID: RP_ID,
+//     userID: new TextEncoder().encode(session.id), 
+//     userName: session.displayName,
+//     attestationType: 'none',
+//     excludeCredentials: userAuthenticators.map(auth => ({
+//       id: auth.credentialID,
+//       type: 'public-key',
+//     })),
+//   });
+
+//   await setChallengeCookie(CHALLENGE_COOKIE_REGISTER, options.challenge);
+//   return options;
+// }
+
+// export async function verifyRegistration(
+//   attestationResponse: any
+// ): Promise<{ success: true } | { success: false; error: string }> {
+//   try {
+//     const session = await getServerSession();
+//     if (!session) {
+//       return { success: false, error: "Unauthorized. Please log in." };
+//     }
+
+//     const expectedChallenge = await readChallengeCookie(CHALLENGE_COOKIE_REGISTER);
+//     if (!expectedChallenge) {
+//       return { success: false, error: "Challenge expired. Please try again." };
+//     }
+
+//     const verification = await verifyRegistrationResponse({
+//       response: attestationResponse,
+//       expectedChallenge,
+//       expectedOrigin: ORIGIN,
+//       expectedRPID: RP_ID,
+//     });
+
+//     if (!verification.verified || !verification.registrationInfo) {
+//       return { success: false, error: "Biometric verification failed. Please try again." };
+//     }
+
+//     const { credential } = verification.registrationInfo;
+    
+//     await Authenticator.create({
+//       userId: session.id,
+//       credentialID: credential.id,
+//       credentialPublicKey: Buffer.from(credential.publicKey).toString('base64'),
+//       counter: credential.counter,
+//       transports: attestationResponse.response.transports || [],
+//     });
+    
+//     await clearChallengeCookie(CHALLENGE_COOKIE_REGISTER);
+
+//     // 👇 NOTIFICATION ADDED HERE
+//     await createSystemNotification(
+//       session.id,
+//       "alert",
+//       "Security Alert: Passkey Added",
+//       "A new passkey was added to your account. If this wasn't you, contact support immediately.",
+//       "/dashboard/settings"
+//     );
+
+//     return { success: true };
+//   } catch (error: any) {
+//     console.error("Registration verification error:", error);
+//     return { 
+//       success: false, 
+//       error: error.message || "Failed to verify registration. Please try again." 
+//     };
+//   }
+// }
+
+// export async function getAuthenticationOptions() {
+//   const options = await generateAuthenticationOptions({
+//     rpID: RP_ID,
+//     userVerification: 'preferred',
+//   });
+//   await setChallengeCookie(CHALLENGE_COOKIE_LOGIN, options.challenge);
+//   return options;
+// }
+
+// export async function verifyAuthentication(
+//   assertionResponse: any
+// ): Promise<
+//   | { success: true; customToken: string }
+//   | { success: false; error: string }
+// > {
+//   try {
+//     await connectDB();
+    
+//     const authenticator = await Authenticator.findOne({ 
+//       credentialID: assertionResponse.id 
+//     }) as IAuthenticator | null;
+    
+//     if (!authenticator) {
+//       return { success: false, error: "Passkey not recognized. Please sign in with email or Google." };
+//     }
+
+//     const expectedChallenge = await readChallengeCookie(CHALLENGE_COOKIE_LOGIN);
+//     if (!expectedChallenge) {
+//       return { success: false, error: "Challenge expired. Please try again." };
+//     }
+
+//     const verification = await verifyAuthenticationResponse({
+//       response: assertionResponse,
+//       expectedChallenge,
+//       expectedOrigin: ORIGIN,
+//       expectedRPID: RP_ID,
+//       credential: {
+//         id: authenticator.credentialID, 
+//         publicKey: Buffer.from(authenticator.credentialPublicKey, 'base64'),
+//         counter: authenticator.counter,
+//         transports: authenticator.transports as any,
+//       },
+//     });
+
+//     if (!verification.verified) {
+//       return { success: false, error: "Passkey verification failed. Please try again." };
+//     }
+
+//     authenticator.counter = verification.authenticationInfo.newCounter;
+//     await authenticator.save();
+//     await clearChallengeCookie(CHALLENGE_COOKIE_LOGIN);
+
+//     const user = await User.findById(authenticator.userId);
+//     if (!user) {
+//       return { success: false, error: "User account not found." };
+//     }
+
+//     const customToken = await adminAuth.createCustomToken(user.firebaseUid);
+    
+//     return { success: true, customToken };
+//   } catch (error: any) {
+//     console.error("Authentication verification error:", error);
+//     return { success: false, error: error.message || "Failed to verify authentication. Please try again." };
+//   }
+// }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// // app/actions/webauthn.ts
+// "use server";
+
+// import { 
+//   generateRegistrationOptions, 
+//   verifyRegistrationResponse,
+//   generateAuthenticationOptions,
+//   verifyAuthenticationResponse
+// } from '@simplewebauthn/server';
+// import { adminAuth } from '@/lib/firebase-admin';
+// import { getServerSession } from '@/lib/session';
+// import { Authenticator, IAuthenticator } from '@/lib/models/Authenticator';
+// import User from '@/lib/models/User';
+// import connectDB from '@/lib/db';
+// import { 
+//   setChallengeCookie, readChallengeCookie, clearChallengeCookie, 
+//   CHALLENGE_COOKIE_REGISTER, CHALLENGE_COOKIE_LOGIN, 
+//   RP_ID, RP_NAME, ORIGIN 
+// } from '@/lib/webauthn';
+
+// // ==========================================
+// // REGISTRATION FLOW
+// // ==========================================
+
+// // 1. GENERATE REGISTRATION OPTIONS (User must be logged in)
+// // Note: Throws on error. Client must have try/catch.
+// export async function getRegistrationOptions() {
+//   const session = await getServerSession();
+//   if (!session) throw new Error("Unauthorized. Please log in.");
+//   await connectDB();
+
+//   const userAuthenticators = await Authenticator.find({ userId: session.id });
+
+//   const options = await generateRegistrationOptions({
+//     rpName: RP_NAME,
+//     rpID: RP_ID,
+//     userID: new TextEncoder().encode(session.id), 
+//     userName: session.displayName,
+//     attestationType: 'none',
+//     excludeCredentials: userAuthenticators.map(auth => ({
+//       id: auth.credentialID,
+//       type: 'public-key',
+//     })),
+//   });
+
+//   await setChallengeCookie(CHALLENGE_COOKIE_REGISTER, options.challenge);
+//   return options;
+// }
+
+// // 2. VERIFY REGISTRATION
+// export async function verifyRegistration(
+//   attestationResponse: any
+// ): Promise<{ success: true } | { success: false; error: string }> {
+//   try {
+//     const session = await getServerSession();
+//     if (!session) {
+//       return { success: false, error: "Unauthorized. Please log in." };
+//     }
+
+//     const expectedChallenge = await readChallengeCookie(CHALLENGE_COOKIE_REGISTER);
+//     if (!expectedChallenge) {
+//       return { success: false, error: "Challenge expired. Please try again." };
+//     }
+
+//     const verification = await verifyRegistrationResponse({
+//       response: attestationResponse,
+//       expectedChallenge,
+//       expectedOrigin: ORIGIN,
+//       expectedRPID: RP_ID,
+//     });
+
+//     if (!verification.verified || !verification.registrationInfo) {
+//       return { success: false, error: "Biometric verification failed. Please try again." };
+//     }
+
+//     const { credential } = verification.registrationInfo;
+    
+//     await Authenticator.create({
+//       userId: session.id,
+//       credentialID: credential.id,
+//       credentialPublicKey: Buffer.from(credential.publicKey).toString('base64'),
+//       counter: credential.counter,
+//       transports: attestationResponse.response.transports || [],
+//     });
+//     await clearChallengeCookie(CHALLENGE_COOKIE_REGISTER);
+//     return { success: true };
+//   } catch (error: any) {
+//     console.error("Registration verification error:", error);
+//     return { 
+//       success: false, 
+//       error: error.message || "Failed to verify registration. Please try again." 
+//     };
+//   }
+// }
+
+
+
+
+
+
+// ==========================================
+// AUTHENTICATION FLOW
+// ==========================================
+
+// 3. GENERATE LOGIN OPTIONS (Public route)
+// Note: Throws on error. Client must have try/catch.
+// export async function getAuthenticationOptions() {
+//   const options = await generateAuthenticationOptions({
+//     rpID: RP_ID,
+//     userVerification: 'preferred',
+//   });
+//   await setChallengeCookie(CHALLENGE_COOKIE_LOGIN, options.challenge);
+//   return options;
+// }
+
+// // 4. VERIFY LOGIN & RETURN CUSTOM TOKEN
+// export async function verifyAuthentication(
+//   assertionResponse: any
+// ): Promise<
+//   | { success: true; customToken: string }
+//   | { success: false; error: string }
+// > {
+//   try {
+//     await connectDB();
+    
+//     const authenticator = await Authenticator.findOne({ 
+//       credentialID: assertionResponse.id 
+//     }) as IAuthenticator | null;
+    
+//     if (!authenticator) {
+//       return { 
+//         success: false, 
+//         error: "Passkey not recognized. Please sign in with email or Google." 
+//       };
+//     }
+
+//     const expectedChallenge = await readChallengeCookie(CHALLENGE_COOKIE_LOGIN);
+//     if (!expectedChallenge) {
+//       return { success: false, error: "Challenge expired. Please try again." };
+//     }
+
+//     const verification = await verifyAuthenticationResponse({
+//       response: assertionResponse,
+//       expectedChallenge,
+//       expectedOrigin: ORIGIN,
+//       expectedRPID: RP_ID,
+//       // 👇 v14 uses 'credential' key (not 'authenticator')
+//       credential: {
+//         id: authenticator.credentialID, 
+//         publicKey: Buffer.from(authenticator.credentialPublicKey, 'base64'),
+//         counter: authenticator.counter,
+//         transports: authenticator.transports as any,
+//       },
+//     });
+
+//     if (!verification.verified) {
+//       return { success: false, error: "Passkey verification failed. Please try again." };
+//     }
+
+//     // Update counter to prevent replay attacks
+//     authenticator.counter = verification.authenticationInfo.newCounter;
+//     await authenticator.save();
+//     await clearChallengeCookie(CHALLENGE_COOKIE_LOGIN);
+
+//     const user = await User.findById(authenticator.userId);
+//     if (!user) {
+//       return { success: false, error: "User account not found." };
+//     }
+
+//     const customToken = await adminAuth.createCustomToken(user.firebaseUid);
+    
+//     return { success: true, customToken };
+//   } catch (error: any) {
+//     console.error("Authentication verification error:", error);
+//     return { 
+//       success: false, 
+//       error: error.message || "Failed to verify authentication. Please try again." 
+//     };
+//   }
+// }
 // // app/actions/webauthn.ts
 // "use server";
 

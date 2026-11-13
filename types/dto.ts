@@ -1,6 +1,6 @@
 // types/dto.ts
 export type SafeUser = {
-  id: string; // Stringified ObjectId
+  id: string; 
   displayName: string;
   email: string;
   tier: 0 | 1 | 2 | 3;

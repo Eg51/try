@@ -10,6 +10,7 @@ import {
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation"; 
+import { useTranslations } from "next-intl";
 import { deleteKyc } from "@/app/actions/kyc";
 import { updateUserSettingsAction } from "@/app/actions/user";
 import { useTour } from "@/components/providers/TourProvider";
@@ -23,28 +24,60 @@ const CURRENCIES = [
 ];
 
 const LANGUAGES = [
-  "English (US)", "English (UK)", "Español (ES)", "Français (FR)", "Deutsch (DE)", 
-  "中文 (ZH)", "日本語 (JA)", "한국어 (KO)", "Русский (RU)", "العربية (AR)", 
-  "Português (PT)", "Italiano (IT)", "Türkçe (TR)", "हिन्दी (HI)", "Yoruba (YO)",
-  "Igbo (IG)", "Hausa (HA)", "Swahili (SW)", "Nederlands (NL)", "Polski (PL)"
+  { code: "en", label: "English (US)", flag: "🇺🇸" },
+  { code: "es", label: "Español", flag: "🇪🇸" },
+  { code: "fr", label: "Français", flag: "🇫🇷" },
+  { code: "de", label: "Deutsch", flag: "🇩🇪" },
+  { code: "pt", label: "Português", flag: "🇵🇹" },
+  { code: "it", label: "Italiano", flag: "🇮🇹" },
+  { code: "nl", label: "Nederlands", flag: "🇳🇱" },
+  { code: "ru", label: "Русский", flag: "🇷🇺" },
+  { code: "zh", label: "中文", flag: "🇨🇳" },
+  { code: "ja", label: "日本語", flag: "🇯🇵" },
+  { code: "ko", label: "한국어", flag: "🇰🇷" },
+  { code: "ar", label: "العربية", flag: "🇸🇦" },
+  { code: "hi", label: "हिन्दी", flag: "🇮🇳" },
+  { code: "tr", label: "Türkçe", flag: "🇹🇷" },
+  { code: "pl", label: "Polski", flag: "🇵🇱" },
+  { code: "sv", label: "Svenska", flag: "🇸🇪" },
+  { code: "da", label: "Dansk", flag: "🇩🇰" },
+  { code: "fi", label: "Suomi", flag: "🇫🇮" },
+  { code: "no", label: "Norsk", flag: "🇳🇴" }
 ];
+
+// 👇 MOVED OUTSIDE TO PREVENT REMOUNTING BUG
+const Toggle = ({ label, desc, state, setState }: { label: string, desc: string, state: boolean, setState: (v: boolean) => void }) => (
+  <div className="flex items-center justify-between py-2">
+    <div>
+      <h4 className="text-sm font-bold text-lime-950 dark:text-white">{label}</h4>
+      <p className="text-xs text-lime-800/60 dark:text-lime-200/50">{desc}</p>
+    </div>
+    <button 
+      onClick={() => setState(!state)} 
+      className={`w-11 h-6 rounded-full transition-colors flex items-center px-1 shrink-0 ${state ? 'bg-lime-500' : 'bg-gray-300 dark:bg-gray-700'}`}
+    >
+      <div className={`w-4 h-4 rounded-full bg-white transition-transform ${state ? 'translate-x-5' : 'translate-x-0'}`}></div>
+    </button>
+  </div>
+);
 
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
   initialCurrency?: string;
-  initialLanguage?: string;
+  initialLanguage?: string; // Expecting locale code (e.g., "en", "es")
 }
 
 export default function SettingsModal({ 
   isOpen, 
   onClose, 
   initialCurrency = "USD", 
-  initialLanguage = "English (US)" 
+  initialLanguage = "en" 
 }: SettingsModalProps) {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const router = useRouter(); 
+  const t = useTranslations("SettingsModal");
   
   const [isSaving, setIsSaving] = useState(false);
   const [isSavingCurrency, setIsSavingCurrency] = useState(false);
@@ -71,63 +104,40 @@ export default function SettingsModal({
   useEffect(() => {
     if (isOpen) {
       setSteps([
-        { id: "tour-settings-appearance", title: "Appearance", text: "Switch between Light, Dark, or System theme modes here." },
-        { id: "tour-settings-currency", title: "Display Currency", text: "Choose your preferred fiat currency for balances and charts." },
-        { id: "tour-settings-language", title: "Language", text: "Select your native language for the interface." },
-        { id: "tour-settings-trading", title: "Trading Preferences", text: "Enable one-click trading or set a default order size." },
-        { id: "tour-settings-notifications", title: "Notifications", text: "Manage what alerts and updates you receive." },
-        { id: "tour-settings-security", title: "KYC & Security", text: "Manage your identity verification data here." },
-        { id: "tour-settings-save", title: "Save Settings", text: "Click here to apply all your changes across the entire platform." },
+        { id: "tour-settings-appearance", title: t("tour.appearanceTitle"), text: t("tour.appearanceText") },
+        { id: "tour-settings-currency", title: t("tour.currencyTitle"), text: t("tour.currencyText") },
+        { id: "tour-settings-language", title: t("tour.languageTitle"), text: t("tour.languageText") },
+        { id: "tour-settings-trading", title: t("tour.tradingTitle"), text: t("tour.tradingText") },
+        { id: "tour-settings-notifications", title: t("tour.notifTitle"), text: t("tour.notifText") },
+        { id: "tour-settings-security", title: t("tour.securityTitle"), text: t("tour.securityText") },
+        { id: "tour-settings-save", title: t("tour.saveTitle"), text: t("tour.saveText") },
       ]);
     } else {
       setSteps([]);
     }
-  }, [isOpen, setSteps]);
+  }, [isOpen, setSteps, t]);
 
   if (!mounted) return null;
-
-  const getLocaleCode = (lang: string) => {
-    if (lang.includes("ES") || lang.includes("Español")) return "es";
-    if (lang.includes("FR") || lang.includes("Français")) return "fr";
-    if (lang.includes("DE") || lang.includes("Deutsch")) return "de";
-    if (lang.includes("ZH") || lang.includes("中文")) return "zh";
-    if (lang.includes("JA") || lang.includes("日本語")) return "ja";
-    if (lang.includes("KO") || lang.includes("한국어")) return "ko";
-    if (lang.includes("RU") || lang.includes("Русский")) return "ru";
-    if (lang.includes("AR") || lang.includes("العربية")) return "ar";
-    if (lang.includes("PT") || lang.includes("Português")) return "pt";
-    if (lang.includes("IT") || lang.includes("Italiano")) return "it";
-    if (lang.includes("TR") || lang.includes("Türkçe")) return "tr";
-    if (lang.includes("HI") || lang.includes("हिन्दी")) return "hi";
-    if (lang.includes("YO") || lang.includes("Yoruba")) return "yo";
-    if (lang.includes("IG") || lang.includes("Igbo")) return "ig";
-    if (lang.includes("HA") || lang.includes("Hausa")) return "ha";
-    if (lang.includes("SW") || lang.includes("Swahili")) return "sw";
-    if (lang.includes("NL") || lang.includes("Nederlands")) return "nl";
-    if (lang.includes("PL") || lang.includes("Polski")) return "pl";
-    return "en"; 
-  };
 
   const handleSave = async () => {
     setIsSaving(true);
     
-    // 👇 Write the locale cookie so next-intl picks it up
-    const localeCode = getLocaleCode(language);
-    document.cookie = `locale=${localeCode}; path=/; max-age=31536000; SameSite=Lax`;
+    // 👇 Write the NEXT_LOCALE cookie so next-intl picks it up
+    document.cookie = `NEXT_LOCALE=${language}; path=/; max-age=31536000; SameSite=Lax`;
 
     const res = await updateUserSettingsAction({ currency, language });
     setIsSaving(false);
 
     if (res.success) {
-      setNotification({ type: "success", title: "Settings Saved", message: "All preferences have been updated successfully." });
+      setNotification({ type: "success", title: t("notif.savedTitle"), message: t("notif.savedMsg") });
       setTimeout(() => {
         setNotification(null);
         onClose();
-        // 👇 FORCE HARD RELOAD TO APPLY LANGUAGE CHANGES
+        // 👇 FORCE HARD RELOAD TO APPLY LANGUAGE CHANGES ACROSS SERVER COMPONENTS
         window.location.reload(); 
       }, 2000);
     } else {
-      setNotification({ type: "error", title: "Save Failed", message: res.error || "Could not update settings." });
+      setNotification({ type: "error", title: t("notif.failedTitle"), message: res.error || t("notif.failedMsg") });
     }
   };
 
@@ -137,49 +147,34 @@ export default function SettingsModal({
     setIsSavingCurrency(false);
 
     if (res.success) {
-      setNotification({ type: "success", title: "Currency Updated", message: "Your display currency has been saved." });
+      setNotification({ type: "success", title: t("notif.currencySavedTitle"), message: t("notif.currencySavedMsg") });
       setTimeout(() => {
         setNotification(null);
         router.refresh(); // Soft refresh is fine for currency
       }, 2500);
     } else {
-      setNotification({ type: "error", title: "Update Failed", message: res.error || "Failed to update currency." });
+      setNotification({ type: "error", title: t("notif.failedTitle"), message: res.error || t("notif.currencyFailedMsg") });
     }
   };
 
   const handleDeleteKyc = async () => {
-    if (!confirm("Are you sure you want to delete your data? Your account will be downgraded to Tier 0 and you will lose access to trading features.")) return;
+    if (!confirm(t("confirmDeleteKyc"))) return;
     
     setIsDeletingKyc(true);
     const res = await deleteKyc();
     setIsDeletingKyc(false);
 
     if (res.success) {
-      setNotification({ type: "success", title: "KYC Deleted", message: "Your verification data has been removed." });
+      setNotification({ type: "success", title: t("notif.kycDeletedTitle"), message: t("notif.kycDeletedMsg") });
       setTimeout(() => {
         setNotification(null);
         onClose();
         router.refresh(); 
       }, 2000);
     } else {
-      setNotification({ type: "error", title: "Error", message: res.error || "Failed to delete KYC data." });
+      setNotification({ type: "error", title: t("notif.errorTitle"), message: res.error || t("notif.kycFailedMsg") });
     }
   };
-
-  const Toggle = ({ label, desc, state, setState }: { label: string, desc: string, state: boolean, setState: (v: boolean) => void }) => (
-    <div className="flex items-center justify-between py-2">
-      <div>
-        <h4 className="text-sm font-bold text-lime-950 dark:text-white">{label}</h4>
-        <p className="text-xs text-lime-800/60 dark:text-lime-200/50">{desc}</p>
-      </div>
-      <button 
-        onClick={() => setState(!state)} 
-        className={`w-11 h-6 rounded-full transition-colors flex items-center px-1 shrink-0 ${state ? 'bg-lime-500' : 'bg-gray-300 dark:bg-gray-700'}`}
-      >
-        <div className={`w-4 h-4 rounded-full bg-white transition-transform ${state ? 'translate-x-5' : 'translate-x-0'}`}></div>
-      </button>
-    </div>
-  );
 
   return createPortal(
     <AnimatePresence>
@@ -200,8 +195,8 @@ export default function SettingsModal({
           >
             <div className="flex items-center justify-between p-6 border-b border-lime-500/20 bg-white/50 dark:bg-[#0a0f0b]/50 backdrop-blur-md shrink-0">
               <div>
-                <h2 className="text-2xl font-extrabold text-lime-950 dark:text-white">Configure experience</h2>
-                <p className="text-sm text-lime-800/60 dark:text-lime-200/50 font-medium mt-1"></p>
+                <h2 className="text-2xl font-extrabold text-lime-950 dark:text-white">{t("title")}</h2>
+                <p className="text-sm text-lime-800/60 dark:text-lime-200/50 font-medium mt-1">{t("subtitle")}</p>
               </div>
               <button onClick={onClose} className="p-2 rounded-full hover:bg-red-500/10 text-lime-800 hover:text-red-500 transition-colors">
                 <X size={24} />
@@ -211,29 +206,31 @@ export default function SettingsModal({
             <div className="p-6 overflow-y-auto space-y-6 flex-1 scrollbar-thumb-lime-400 custom-scrollbar">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 
+                {/* APPEARANCE */}
                 <div id="tour-settings-appearance" className="group p-5 rounded-2xl border border-lime-500/20 bg-white/50 dark:bg-[#121A14]/50 hover:border-lime-500/50 transition-all">
                   <div className="flex items-center gap-3 mb-4">
                     <div className="p-2 bg-lime-500/20 rounded-xl text-lime-600 dark:text-lime-400 group-hover:scale-110 transition-transform">
                       <Palette size={20} />
                     </div>
                     <div>
-                      <h3 className="font-bold text-lime-950 dark:text-white">Appearance</h3>
-                      <p className="text-xs text-lime-800/60 dark:text-lime-200/50">Choose your interface theme.</p>
+                      <h3 className="font-bold text-lime-950 dark:text-white">{t("appearance.title")}</h3>
+                      <p className="text-xs text-lime-800/60 dark:text-lime-200/50">{t("appearance.desc")}</p>
                     </div>
                   </div>
                   <div className="flex gap-2">
                     <button onClick={() => setTheme("light")} className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold border transition-all ${theme === "light" ? "bg-lime-500 text-white border-lime-500" : "border-lime-500/20 text-lime-800 dark:text-lime-200 hover:bg-lime-500/10"}`}>
-                      <Sun size={14} /> Light
+                      <Sun size={14} /> {t("appearance.light")}
                     </button>
                     <button onClick={() => setTheme("dark")} className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold border transition-all ${theme === "dark" ? "bg-lime-500 text-white border-lime-500" : "border-lime-500/20 text-lime-800 dark:text-lime-200 hover:bg-lime-500/10"}`}>
-                      <Moon size={14} /> Dark
+                      <Moon size={14} /> {t("appearance.dark")}
                     </button>
                     <button onClick={() => setTheme("system")} className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold border transition-all ${theme === "system" ? "bg-lime-500 text-white border-lime-500" : "border-lime-500/20 text-lime-800 dark:text-lime-200 hover:bg-lime-500/10"}`}>
-                      <Monitor size={14} /> Auto
+                      <Monitor size={14} /> {t("appearance.auto")}
                     </button>
                   </div>
                 </div>
 
+                {/* CURRENCY */}
                 <div id="tour-settings-currency" className="group p-5 rounded-2xl border border-lime-500/20 bg-white/50 dark:bg-[#121A14]/50 hover:border-lime-500/50 transition-all flex flex-col justify-between">
                   <div>
                     <div className="flex items-center gap-3 mb-4">
@@ -241,8 +238,8 @@ export default function SettingsModal({
                         <DollarSign size={20} />
                       </div>
                       <div>
-                        <h3 className="font-bold text-lime-950 dark:text-white">Display Currency</h3>
-                        <p className="text-xs text-lime-800/60 dark:text-lime-200/50">Primary fiat for balances.</p>
+                        <h3 className="font-bold text-lime-950 dark:text-white">{t("currency.title")}</h3>
+                        <p className="text-xs text-lime-800/60 dark:text-lime-200/50">{t("currency.desc")}</p>
                       </div>
                     </div>
                     
@@ -270,67 +267,77 @@ export default function SettingsModal({
                     className="w-full flex items-center justify-center gap-2 py-2.5 bg-lime-600 hover:bg-lime-700 text-white rounded-xl font-bold text-xs transition-colors shadow-lg shadow-lime-600/20 disabled:opacity-50"
                   >
                     {isSavingCurrency ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
-                    {isSavingCurrency ? "Saving..." : "Save Currency"}
+                    {isSavingCurrency ? t("currency.saving") : t("currency.save")}
                   </button>
                 </div>
 
+                {/* LANGUAGE */}
                 <div id="tour-settings-language" className="group p-5 rounded-2xl border border-lime-500/20 bg-white/50 dark:bg-[#121A14]/50 hover:border-lime-500/50 transition-all">
                   <div className="flex items-center gap-3 mb-4">
                     <div className="p-2 bg-lime-500/20 rounded-xl text-lime-600 dark:text-lime-400 group-hover:scale-110 transition-transform">
                       <Globe size={20} />
                     </div>
                     <div>
-                      <h3 className="font-bold text-lime-950 dark:text-white">Language</h3>
-                      <p className="text-xs text-lime-800/60 dark:text-lime-200/50">Select your native language.</p>
+                      <h3 className="font-bold text-lime-950 dark:text-white">{t("language.title")}</h3>
+                      <p className="text-xs text-lime-800/60 dark:text-lime-200/50">{t("language.desc")}</p>
                     </div>
                   </div>
-                  <select value={language} onChange={(e) => setLanguage(e.target.value)} className="w-full bg-white dark:bg-[#0a0f0b] border border-lime-500/30 text-lime-950 dark:text-white text-sm font-bold rounded-lg px-3 py-2 outline-none focus:border-lime-500 cursor-pointer">
+                  <select 
+                    value={language} 
+                    onChange={(e) => setLanguage(e.target.value)} 
+                    className="w-full bg-white dark:bg-[#0a0f0b] border border-lime-500/30 text-lime-950 dark:text-white text-sm font-bold rounded-lg px-3 py-2 outline-none focus:border-lime-500 cursor-pointer"
+                  >
                     {LANGUAGES.map(lang => (
-                      <option key={lang} value={lang}>{lang}</option>
+                      <option key={lang.code} value={lang.code}>
+                        {lang.flag} {lang.label}
+                      </option>
                     ))}
                   </select>
                 </div>
 
+                {/* TRADING */}
                 <div id="tour-settings-trading" className="group p-5 rounded-2xl border border-lime-500/20 bg-white/50 dark:bg-[#121A14]/50 hover:border-lime-500/50 transition-all">
                   <div className="flex items-center gap-3 mb-2">
                     <div className="p-2 bg-lime-500/20 rounded-xl text-lime-600 dark:text-lime-400 group-hover:scale-110 transition-transform">
                       <TrendingUp size={20} />
                     </div>
                     <div>
-                      <h3 className="font-bold text-lime-950 dark:text-white">Trading</h3>
-                      <p className="text-xs text-lime-800/60 dark:text-lime-200/50">Execution preferences.</p>
+                      <h3 className="font-bold text-lime-950 dark:text-white">{t("trading.title")}</h3>
+                      <p className="text-xs text-lime-800/60 dark:text-lime-200/50">{t("trading.desc")}</p>
                     </div>
                   </div>
-                  <Toggle label="One-Click Trading" desc="Fast execution directly from charts." state={oneClickTrade} setState={setOneClickTrade} />
+                  <Toggle label={t("trading.oneClick")} desc={t("trading.oneClickDesc")} state={oneClickTrade} setState={setOneClickTrade} />
                   <div className="flex items-center justify-between py-2">
                     <div>
-                      <h4 className="text-sm font-bold text-lime-950 dark:text-white">Default Order Size</h4>
-                      <p className="text-xs text-lime-800/60 dark:text-lime-200/50">Base amount for quick buys.</p>
+                      <h4 className="text-sm font-bold text-lime-950 dark:text-white">{t("trading.defaultSize")}</h4>
+                      <p className="text-xs text-lime-800/60 dark:text-lime-200/50">{t("trading.defaultSizeDesc")}</p>
                     </div>
                     <input type="number" value={defaultOrderSize} onChange={(e) => setDefaultOrderSize(e.target.value)} className="w-20 bg-white dark:bg-[#0a0f0b] border border-lime-500/30 text-lime-950 dark:text-white text-sm font-bold rounded-lg px-2 py-1 text-right outline-none focus:border-lime-500" />
                   </div>
                 </div>
               </div>
 
+              {/* NOTIFICATIONS */}
               <div id="tour-settings-notifications" className="group p-5 rounded-2xl border border-lime-500/20 bg-white/50 dark:bg-[#121A14]/50 hover:border-lime-500/50 transition-all">
                 <div className="flex items-center gap-3 mb-2">
                   <div className="p-2 bg-lime-500/20 rounded-xl text-lime-600 dark:text-lime-400 group-hover:scale-110 transition-transform">
                     <Bell size={20} />
                   </div>
                   <div>
-                    <h3 className="font-bold text-lime-950 dark:text-white">Notifications & Alerts</h3>
-                    <p className="text-xs text-lime-800/60 dark:text-lime-200/50">Manage your alerts.</p>
+                    <h3 className="font-bold text-lime-950 dark:text-white">{t("notifications.title")}</h3>
+                    <p className="text-xs text-lime-800/60 dark:text-lime-200/50">{t("notifications.desc")}</p>
                   </div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8">
-                  <Toggle label="Email Updates" desc="Account & security emails." state={emailNotifs} setState={setEmailNotifs} />
-                  <Toggle label="Trade Execution" desc="When your orders fill." state={tradeExec} setState={setTradeExec} />
-                  <Toggle label="Price Alerts" desc="When assets hit your targets." state={priceAlerts} setState={setPriceAlerts} />
-                  <Toggle label="Margin Calls" desc="Risk management warnings." state={marginCalls} setState={setMarginCalls} />
-                  <Toggle label="Market News" desc="Daily news & analysis feed." state={newsFeed} setState={setNewsFeed} />
+                  <Toggle label={t("notifications.email")} desc={t("notifications.emailDesc")} state={emailNotifs} setState={setEmailNotifs} />
+                  <Toggle label={t("notifications.trade")} desc={t("notifications.tradeDesc")} state={tradeExec} setState={setTradeExec} />
+                  <Toggle label={t("notifications.price")} desc={t("notifications.priceDesc")} state={priceAlerts} setState={setPriceAlerts} />
+                  <Toggle label={t("notifications.margin")} desc={t("notifications.marginDesc")} state={marginCalls} setState={setMarginCalls} />
+                  <Toggle label={t("notifications.news")} desc={t("notifications.newsDesc")} state={newsFeed} setState={setNewsFeed} />
                 </div>
               </div>
 
+              {/* SECURITY */}
               <div id="tour-settings-security" className="group p-5 rounded-2xl border border-red-500/20 bg-red-500/5 transition-all">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                   <div className="flex items-center gap-3">
@@ -338,8 +345,8 @@ export default function SettingsModal({
                       <Shield size={20} />
                     </div>
                     <div>
-                      <h3 className="font-bold text-red-500">KYC & Security Data</h3>
-                      <p className="text-xs text-red-500/70">Manage or delete your verification data.</p>
+                      <h3 className="font-bold text-red-500">{t("security.title")}</h3>
+                      <p className="text-xs text-red-500/70">{t("security.desc")}</p>
                     </div>
                   </div>
                   <div className="flex gap-2 w-full sm:w-auto">
@@ -347,7 +354,7 @@ export default function SettingsModal({
                       onClick={() => { onClose(); window.location.href = "/dashboard/profile"; }}
                       className="flex-1 sm:flex-none px-4 py-2 rounded-xl bg-white dark:bg-[#121A14] border border-red-500/20 text-red-500 text-xs font-bold hover:bg-red-500/10 transition-colors"
                     >
-                      View KYC
+                      {t("security.viewKyc")}
                     </button>
                     <button 
                       onClick={handleDeleteKyc}
@@ -355,7 +362,7 @@ export default function SettingsModal({
                       className="flex-1 sm:flex-none px-4 py-2 rounded-xl bg-red-500 text-white text-xs font-bold hover:bg-red-600 transition-colors flex items-center justify-center gap-2"
                     >
                       {isDeletingKyc ? <Loader2 size={14} className="animate-spin" /> : <UserX size={14} />}
-                      Delete KYC
+                      {t("security.deleteKyc")}
                     </button>
                   </div>
                 </div>
@@ -370,10 +377,11 @@ export default function SettingsModal({
                 className="px-8 py-3 rounded-xl bg-lime-600 text-white font-bold hover:bg-lime-700 transition-all shadow-lg shadow-lime-600/20 flex items-center gap-2"
               >
                 {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Check size={18} />}
-                {isSaving ? "Saving..." : "Save All Settings"}
+                {isSaving ? t("saving") : t("saveAll")}
               </button>
             </div>
 
+            {/* NOTIFICATIONS TOAST */}
             <AnimatePresence>
               {notification && (
                 <motion.div 
@@ -409,7 +417,7 @@ export default function SettingsModal({
                         notification.type === 'success' ? 'bg-green-500 hover:bg-green-600' : 'bg-red-500 hover:bg-red-600'
                       }`}
                     >
-                      Got it
+                      {t("gotIt")}
                     </button>
                   </motion.div>
                 </motion.div>
