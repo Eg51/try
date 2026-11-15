@@ -57,12 +57,14 @@ export default function PairSelectionModal({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[250] flex items-center justify-center p-4 bg-black/60 dark:bg-black/80 backdrop-blur-sm">
+        // 👇 FIXED: Added overflow-y-auto to the background overlay and items-start for small screens
+        <div className="fixed inset-0 z-[1000] flex items-start sm:items-center justify-center p-4 sm:p-6 bg-black/60 dark:bg-black/80 backdrop-blur-sm overflow-y-auto">
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="relative w-full max-w-md bg-[#f4fbf5]/95 dark:bg-[#0a0f0b]/95 backdrop-blur-2xl border border-lime-500/30 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]"
+            // 👇 FIXED: Added my-auto to keep it centered but allow scrolling if it gets too tall
+            className="relative w-full max-w-md my-auto bg-[#f4fbf5]/95 dark:bg-[#0a0f0b]/95 backdrop-blur-2xl border border-lime-500/30 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]"
           >
             <div className="p-4 border-b border-lime-500/10 flex justify-between items-center bg-white/40 dark:bg-[#121A14]/60 shrink-0">
               <div>
@@ -78,8 +80,8 @@ export default function PairSelectionModal({
               </button>
             </div>
 
-            {/* 👇 TABS */}
-            <div className="flex px-4 py-3 gap-2 bg-white/20 dark:bg-black/20 border-b border-lime-500/10">
+            {/* TABS */}
+            <div className="flex px-4 py-3 gap-2 bg-white/20 dark:bg-black/20 border-b border-lime-500/10 shrink-0">
               <button 
                 onClick={() => { setStep("base"); setSearch(""); }}
                 className={`flex-1 py-2 text-xs font-bold rounded-lg transition-colors ${step === "base" ? "bg-lime-500 text-white shadow-md" : "bg-white/50 dark:bg-black/30 text-lime-800 dark:text-lime-200"}`}
@@ -94,6 +96,7 @@ export default function PairSelectionModal({
               </button>
             </div>
 
+            {/* SEARCH BAR (Pinned under tabs) */}
             <div className="p-3 shrink-0">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-lime-600/50 dark:text-lime-400/50" size={16} />
@@ -107,7 +110,7 @@ export default function PairSelectionModal({
               </div>
             </div>
 
-            {/* 👇 LIST */}
+            {/* LIST (Scrollable) */}
             <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
               {availableAssets.length === 0 && (
                 <p className="text-center text-xs text-lime-800/50 dark:text-lime-200/40 py-8 font-medium">
@@ -119,7 +122,6 @@ export default function PairSelectionModal({
                 const isSelected = step === "base" ? base === asset.symbol : quote === asset.symbol;
                 return (
                   <button
-                    // key={asset._id}
                     key={asset.id || asset._id || asset.symbol}
                     onClick={() => {
                       if (step === "base") {
@@ -156,6 +158,7 @@ export default function PairSelectionModal({
               })}
             </div>
 
+            {/* FOOTER */}
             <div className="p-4 border-t border-lime-500/10 bg-white/40 dark:bg-[#121A14]/60 shrink-0">
               <Button
                 onClick={handleSave}
@@ -173,13 +176,12 @@ export default function PairSelectionModal({
 }
 
 
-
 // // components/dashboard/PairSelectionModal.tsx
 // "use client";
 
-// import { useState } from "react";
+// import { useState, useMemo } from "react";
 // import { motion, AnimatePresence } from "framer-motion";
-// import { X, Search, ChevronRight, Check } from "lucide-react";
+// import { X, Search, Check } from "lucide-react";
 // import { useTranslations } from "next-intl";
 // import { Button } from "@/components/ui/Button";
 
@@ -204,12 +206,24 @@ export default function PairSelectionModal({
 //   const [base, setBase] = useState(initialBase);
 //   const [quote, setQuote] = useState(initialQuote);
 
-//   // Filter assets based on step
-//   const availableAssets = dbAssets.filter((a: any) => {
-//     const matchesSearch = a.name.toLowerCase().includes(search.toLowerCase()) || a.symbol.toLowerCase().includes(search.toLowerCase());
-//     if (step === "base") return a.category !== "fiat" && matchesSearch;
-//     return matchesSearch;
-//   });
+//   // 👇 FIXED: Strictly divide the assets based on the active tab
+//   const availableAssets = useMemo(() => {
+//     return dbAssets.filter((a: any) => {
+//       const matchesSearch = 
+//         a.name.toLowerCase().includes(search.toLowerCase()) || 
+//         a.symbol.toLowerCase().includes(search.toLowerCase());
+      
+//       if (!matchesSearch) return false;
+
+//       if (step === "base") {
+//         // Base Asset: Crypto and Memes ONLY (No Fiat)
+//         return a.category === "crypto" || a.category === "memes";
+//       } else {
+//         // Quote Asset: Fiat, Crypto, and Memes
+//         return true; 
+//       }
+//     });
+//   }, [dbAssets, search, step]);
 
 //   const handleSave = () => {
 //     if (base && quote) {
@@ -221,7 +235,7 @@ export default function PairSelectionModal({
 //   return (
 //     <AnimatePresence>
 //       {isOpen && (
-//         <div className="fixed inset-0 z-[250] flex items-center justify-center p-4 bg-black/60 dark:bg-black/80 backdrop-blur-sm">
+//         <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/60 dark:bg-black/80 backdrop-blur-sm">
 //           <motion.div
 //             initial={{ opacity: 0, scale: 0.95, y: 20 }}
 //             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -242,16 +256,16 @@ export default function PairSelectionModal({
 //               </button>
 //             </div>
 
-//             {/* Steps Indicator */}
+//             {/* 👇 TABS */}
 //             <div className="flex px-4 py-3 gap-2 bg-white/20 dark:bg-black/20 border-b border-lime-500/10">
 //               <button 
-//                 onClick={() => setStep("base")}
+//                 onClick={() => { setStep("base"); setSearch(""); }}
 //                 className={`flex-1 py-2 text-xs font-bold rounded-lg transition-colors ${step === "base" ? "bg-lime-500 text-white shadow-md" : "bg-white/50 dark:bg-black/30 text-lime-800 dark:text-lime-200"}`}
 //               >
 //                 1. {base ? base : t("selectBase")}
 //               </button>
 //               <button 
-//                 onClick={() => setStep("quote")}
+//                 onClick={() => { setStep("quote"); setSearch(""); }}
 //                 className={`flex-1 py-2 text-xs font-bold rounded-lg transition-colors ${step === "quote" ? "bg-lime-500 text-white shadow-md" : "bg-white/50 dark:bg-black/30 text-lime-800 dark:text-lime-200"}`}
 //               >
 //                 2. {quote ? quote : t("selectQuote")}
@@ -263,7 +277,7 @@ export default function PairSelectionModal({
 //                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-lime-600/50 dark:text-lime-400/50" size={16} />
 //                 <input
 //                   type="text"
-//                   placeholder={t("search")}
+//                   placeholder={step === "base" ? "Search Crypto..." : "Search Fiat or Crypto..."}
 //                   value={search}
 //                   onChange={(e) => setSearch(e.target.value)}
 //                   className="w-full bg-white/50 dark:bg-[#050806]/80 border border-lime-500/20 rounded-full py-2 pl-9 pr-4 text-sm text-lime-950 dark:text-white focus:outline-none focus:border-lime-500 transition-colors"
@@ -271,18 +285,26 @@ export default function PairSelectionModal({
 //               </div>
 //             </div>
 
+//             {/* 👇 LIST */}
 //             <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
+//               {availableAssets.length === 0 && (
+//                 <p className="text-center text-xs text-lime-800/50 dark:text-lime-200/40 py-8 font-medium">
+//                   No assets found.
+//                 </p>
+//               )}
+              
 //               {availableAssets.map((asset: any) => {
 //                 const isSelected = step === "base" ? base === asset.symbol : quote === asset.symbol;
 //                 return (
 //                   <button
-//                     key={asset._id}
+//                     // key={asset._id}
+//                     key={asset.id || asset._id || asset.symbol}
 //                     onClick={() => {
 //                       if (step === "base") {
 //                         setBase(asset.symbol);
-//                         setStep("quote"); // Auto-advance
+//                         setStep("quote");
 //                       } else {
-//                         if (asset.symbol === base) return; // Prevent same asset
+//                         if (asset.symbol === base) return;
 //                         setQuote(asset.symbol);
 //                       }
 //                       setSearch("");

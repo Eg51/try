@@ -12,14 +12,14 @@ interface KycGateProps {
   currentTier: number;
   children: React.ReactNode;
   featureName?: string;
+  isAdmin?: boolean; // 👈 ADDED
 }
 
-export function KycGate({ requiredTier, currentTier, children, featureName }: KycGateProps) {
+export function KycGate({ requiredTier, currentTier, children, featureName, isAdmin }: KycGateProps) {
   const { openModal } = useDevModal();
   const router = useRouter();
   const t = useTranslations("Kyc");
   
-  // Cleanup timeout to prevent memory leaks if component unmounts
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -28,7 +28,8 @@ export function KycGate({ requiredTier, currentTier, children, featureName }: Ky
     };
   }, []);
 
-  if (currentTier >= requiredTier) {
+  // 👇 ADDED isAdmin check
+  if (isAdmin || currentTier >= requiredTier) {
     return <>{children}</>;
   }
 
@@ -60,13 +61,24 @@ export function KycGate({ requiredTier, currentTier, children, featureName }: Ky
     </div>
   );
 }
+
+
+
+
+
+
+
+
+
+
 // // components/KycGate.tsx
 // "use client";
 
-// import React from "react";
+// import React, { useEffect, useRef } from "react";
 // import { useDevModal } from "@/components/providers/DevModalProvider";
 // import { useRouter } from "next/navigation";
 // import { Lock } from "lucide-react";
+// import { useTranslations } from "next-intl";
 
 // interface KycGateProps {
 //   requiredTier: number;
@@ -75,9 +87,19 @@ export function KycGate({ requiredTier, currentTier, children, featureName }: Ky
 //   featureName?: string;
 // }
 
-// export function KycGate({ requiredTier, currentTier, children, featureName = "this feature" }: KycGateProps) {
+// export function KycGate({ requiredTier, currentTier, children, featureName }: KycGateProps) {
 //   const { openModal } = useDevModal();
 //   const router = useRouter();
+//   const t = useTranslations("Kyc");
+  
+//   // Cleanup timeout to prevent memory leaks if component unmounts
+//   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+//   useEffect(() => {
+//     return () => {
+//       if (timeoutRef.current) clearTimeout(timeoutRef.current);
+//     };
+//   }, []);
 
 //   if (currentTier >= requiredTier) {
 //     return <>{children}</>;
@@ -87,13 +109,15 @@ export function KycGate({ requiredTier, currentTier, children, featureName }: Ky
 //     e.preventDefault();
 //     e.stopPropagation();
     
+//     const featureText = featureName || t("thisFeature");
+
 //     openModal(
-//       `Tier ${requiredTier} Required`, 
-//       `You need to be at least Tier ${requiredTier} to use ${featureName}. Redirecting you to the KYC page...`,
+//       t("tierRequiredTitle", { tier: requiredTier }), 
+//       t("tierRequiredDesc", { tier: requiredTier, feature: featureText }),
 //       "warning"
 //     );
 
-//     setTimeout(() => {
+//     timeoutRef.current = setTimeout(() => {
 //       router.push(`/dashboard/kyc?upgrade=${requiredTier}`);
 //     }, 2000);
 //   };

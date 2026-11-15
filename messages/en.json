@@ -593,7 +593,7 @@
     "viewFull": "View Full",
     "remove": "Remove"
   },
-    "UserActions": {
+  "UserActions": {
     "settingsUpdatedTitle": "Preferences Updated",
     "settingsUpdatedMsg": "Your display currency was set to {currency} and language to {language}.",
     "profileUpdatedTitle": "Profile Updated",
@@ -639,5 +639,12 @@
       "errorTitle": "Error",
       "errorDesc": "Failed to update profile."
     }
-  }
+  },
+  "italiano": "Italiano",
+  "key": "हिन्दी",
+  "francais": "Français",
+  "espanol": "Español",
+  "english-us": "English (US)",
+  "deutsch": "Deutsch",
+  "alarbyh": "العربية"
 }

@@ -20,29 +20,16 @@ const CURRENCIES = [
   { code: "EUR", symbol: "€", name: "Euro" },
   { code: "GBP", symbol: "£", name: "British Pound" },
   { code: "JPY", symbol: "¥", name: "Japanese Yen" },
-  { code: "NGN", symbol: "₦", name: "Nigerian Naira" },
 ];
 
 const LANGUAGES = [
+  { code: "ar", label: "العربية", flag: "🇸🇦" },
+  { code: "de", label: "Deutsch", flag: "🇩🇪" },
   { code: "en", label: "English (US)", flag: "🇺🇸" },
   { code: "es", label: "Español", flag: "🇪🇸" },
   { code: "fr", label: "Français", flag: "🇫🇷" },
-  { code: "de", label: "Deutsch", flag: "🇩🇪" },
-  { code: "pt", label: "Português", flag: "🇵🇹" },
-  { code: "it", label: "Italiano", flag: "🇮🇹" },
-  { code: "nl", label: "Nederlands", flag: "🇳🇱" },
-  { code: "ru", label: "Русский", flag: "🇷🇺" },
-  { code: "zh", label: "中文", flag: "🇨🇳" },
-  { code: "ja", label: "日本語", flag: "🇯🇵" },
-  { code: "ko", label: "한국어", flag: "🇰🇷" },
-  { code: "ar", label: "العربية", flag: "🇸🇦" },
   { code: "hi", label: "हिन्दी", flag: "🇮🇳" },
-  { code: "tr", label: "Türkçe", flag: "🇹🇷" },
-  { code: "pl", label: "Polski", flag: "🇵🇱" },
-  { code: "sv", label: "Svenska", flag: "🇸🇪" },
-  { code: "da", label: "Dansk", flag: "🇩🇰" },
-  { code: "fi", label: "Suomi", flag: "🇫🇮" },
-  { code: "no", label: "Norsk", flag: "🇳🇴" }
+  { code: "it", label: "Italiano", flag: "🇮🇹" },
 ];
 
 // 👇 MOVED OUTSIDE TO PREVENT REMOUNTING BUG

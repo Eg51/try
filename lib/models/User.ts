@@ -1,3 +1,4 @@
+
 // lib/models/User.ts
 import mongoose, { Schema, Document, Model } from 'mongoose';
 import { encrypt, decrypt } from '../encryption';
@@ -6,6 +7,7 @@ export interface IUser extends Document {
   firebaseUid: string;
   email: string;
   passwordHash?: string;
+  deviceIds: string[]; 
   displayName: string;
   role: 'user' | 'admin';
   status: 'active' | 'suspended' | 'closed';
@@ -24,6 +26,11 @@ export interface IUser extends Document {
   lastSeenAt: Date;
   createdAt: Date;
   updatedAt: Date;
+  // 👇 PASSWORD RESET FIELDS
+  resetPasswordToken?: string;
+  resetPasswordExpires?: Date;
+  failedOtpAttempts: number; // 👈 Track wrong OTP guesses
+  isResetBlocked: boolean;   // 👈 Permanent block flag
 }
 
 const UserSchema = new Schema<IUser>(
@@ -31,6 +38,7 @@ const UserSchema = new Schema<IUser>(
     firebaseUid: { type: String, required: true, unique: true, index: true },
     email: { type: String, required: true, unique: true, index: true },
     passwordHash: { type: String },
+    deviceIds: { type: [String], default: [], index: true },
     displayName: { type: String, required: true },
     role: { type: String, enum: ['user', 'admin'], default: 'user', index: true },
     status: { type: String, enum: ['active', 'suspended', 'closed'], default: 'active', index: true },
@@ -50,11 +58,15 @@ const UserSchema = new Schema<IUser>(
     claimedBadges: { type: [String], default: [] },
     favorites: { type: [String], default: [] },
     lastSeenAt: { type: Date, default: Date.now },
+    // 👇 PASSWORD RESET FIELDS
+    resetPasswordToken: { type: String },
+    resetPasswordExpires: { type: Date },
+    failedOtpAttempts: { type: Number, default: 0 }, 
+    isResetBlocked: { type: Boolean, default: false }, 
   },
   { timestamps: true }
 );
 
-// 👇 ENCRYPTION HOOKS (Using async to avoid 'next' type error)
 UserSchema.pre('save', async function () {
   if (this.isModified('displayName')) {
     this.displayName = encrypt(this.displayName);
@@ -71,14 +83,21 @@ UserSchema.set('toJSON', {
   transform: (doc, ret: any) => {
     delete ret.__v;
     delete ret.passwordHash;
+    delete ret.deviceIds;
+    delete ret.resetPasswordToken;
+    delete ret.resetPasswordExpires;
+    delete ret.failedOtpAttempts;
+    delete ret.isResetBlocked;
     return ret;
   }
 });
 
 const User: Model<IUser> = mongoose.models.User || mongoose.model<IUser>('User', UserSchema);
 export default User;
+
 // // lib/models/User.ts
 // import mongoose, { Schema, Document, Model } from 'mongoose';
+// import { encrypt, decrypt } from '../encryption';
 
 // export interface IUser extends Document {
 //   firebaseUid: string;
@@ -92,7 +111,7 @@ export default User;
 //   preferences: { 
 //     theme: 'dark' | 'light' | 'auto'; 
 //     notifications: boolean; 
-//     language?: string; // 👈 ADDED
+//     language?: string; 
 //   };
 //   xp: number;
 //   coins: number;
@@ -120,7 +139,7 @@ export default User;
 //     preferences: {
 //       theme: { type: String, enum: ['dark', 'light', 'auto'], default: 'dark' },
 //       notifications: { type: Boolean, default: true },
-//       language: { type: String, default: 'English (US)' }, // 👈 ADDED
+//       language: { type: String, default: 'English (US)' },
 //     },
 //     xp: { type: Number, default: 0 },
 //     coins: { type: Number, default: 0 },
@@ -131,6 +150,19 @@ export default User;
 //   },
 //   { timestamps: true }
 // );
+
+// // 👇 ENCRYPTION HOOKS (Using async to avoid 'next' type error)
+// UserSchema.pre('save', async function () {
+//   if (this.isModified('displayName')) {
+//     this.displayName = encrypt(this.displayName);
+//   }
+// });
+
+// UserSchema.post('init', function (doc: any) {
+//   if (doc.displayName) {
+//     doc.displayName = decrypt(doc.displayName);
+//   }
+// });
 
 // UserSchema.set('toJSON', {
 //   transform: (doc, ret: any) => {

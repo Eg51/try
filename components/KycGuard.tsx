@@ -7,20 +7,20 @@ import { Loader2, Shield } from "lucide-react";
 import { motion } from "framer-motion";
 import { useTranslations } from "next-intl";
 
-export function KycGuard({ children, tier, isSkipped }: { children: React.ReactNode, tier: number, isSkipped: boolean }) {
+export function KycGuard({ children, tier, isSkipped, isAdmin }: { children: React.ReactNode, tier: number, isSkipped: boolean, isAdmin?: boolean }) {
   const pathname = usePathname();
   const router = useRouter();
   const t = useTranslations("Kyc");
 
   useEffect(() => {
-    // If they are Tier 0, haven't skipped, and are NOT on the KYC page
-    if (tier === 0 && !isSkipped && pathname !== "/dashboard/kyc") {
+    // 👇 ADDED !isAdmin to bypass the guard
+    if (!isAdmin && tier === 0 && !isSkipped && pathname !== "/dashboard/kyc") {
       router.push("/dashboard/kyc");
     }
-  }, [tier, isSkipped, pathname, router]);
+  }, [tier, isSkipped, pathname, router, isAdmin]);
 
   // Show a loading state while redirecting to prevent flashing the dashboard
-  if (tier === 0 && !isSkipped && pathname !== "/dashboard/kyc") {
+  if (!isAdmin && tier === 0 && !isSkipped && pathname !== "/dashboard/kyc") {
     return (
       <div className="h-full w-full min-h-[80vh] flex items-center justify-center relative z-20">
         <motion.div 
@@ -28,7 +28,6 @@ export function KycGuard({ children, tier, isSkipped }: { children: React.ReactN
           animate={{ opacity: 1, scale: 1, y: 0 }}
           className="bg-white/60 dark:bg-[#0a0f0b]/60 backdrop-blur-2xl border border-lime-500/30 rounded-3xl p-10 flex flex-col items-center max-w-sm w-full mx-4 shadow-[0_8px_32px_0_rgba(132,204,22,0.15)] dark:shadow-[0_8px_32px_0_rgba(0,0,0,0.5)] relative overflow-hidden"
         >
-          {/* Subtle glow effect inside the card - FIXED TAILWIND CLASSES */}
           <div className="absolute top-[-50%] left-[-50%] w-[200%] h-[200%] bg-lime-500/10 blur-[80px] rounded-full pointer-events-none"></div>
 
           <div className="relative">
@@ -50,6 +49,11 @@ export function KycGuard({ children, tier, isSkipped }: { children: React.ReactN
 
   return <>{children}</>;
 }
+
+
+
+
+
 // // components/KycGuard.tsx
 // "use client";
 
@@ -57,10 +61,12 @@ export function KycGuard({ children, tier, isSkipped }: { children: React.ReactN
 // import { useEffect } from "react";
 // import { Loader2, Shield } from "lucide-react";
 // import { motion } from "framer-motion";
+// import { useTranslations } from "next-intl";
 
 // export function KycGuard({ children, tier, isSkipped }: { children: React.ReactNode, tier: number, isSkipped: boolean }) {
 //   const pathname = usePathname();
 //   const router = useRouter();
+//   const t = useTranslations("Kyc");
 
 //   useEffect(() => {
 //     // If they are Tier 0, haven't skipped, and are NOT on the KYC page
@@ -78,8 +84,8 @@ export function KycGuard({ children, tier, isSkipped }: { children: React.ReactN
 //           animate={{ opacity: 1, scale: 1, y: 0 }}
 //           className="bg-white/60 dark:bg-[#0a0f0b]/60 backdrop-blur-2xl border border-lime-500/30 rounded-3xl p-10 flex flex-col items-center max-w-sm w-full mx-4 shadow-[0_8px_32px_0_rgba(132,204,22,0.15)] dark:shadow-[0_8px_32px_0_rgba(0,0,0,0.5)] relative overflow-hidden"
 //         >
-//           {/* Subtle glow effect inside the card */}
-//           <div className="absolute top-[-50%] left-[-50%] w-200% h-200% bg-lime-500/10 blur-[80px] rounded-full pointer-events-none"></div>
+//           {/* Subtle glow effect inside the card - FIXED TAILWIND CLASSES */}
+//           <div className="absolute top-[-50%] left-[-50%] w-[200%] h-[200%] bg-lime-500/10 blur-[80px] rounded-full pointer-events-none"></div>
 
 //           <div className="relative">
 //             <div className="absolute inset-0 bg-lime-500 blur-xl opacity-20 animate-pulse"></div>
@@ -89,9 +95,9 @@ export function KycGuard({ children, tier, isSkipped }: { children: React.ReactN
 //             </div>
 //           </div>
 
-//           <h2 className="text-xl font-extrabold text-lime-950 dark:text-white mb-2 relative z-10">Identity Verification</h2>
+//           <h2 className="text-xl font-extrabold text-lime-950 dark:text-white mb-2 relative z-10">{t("guardTitle")}</h2>
 //           <p className="text-sm text-lime-800/70 dark:text-lime-200/60 font-medium text-center relative z-10">
-//             Redirecting you to complete your KYC profile...
+//             {t("guardDesc")}
 //           </p>
 //         </motion.div>
 //       </div>
