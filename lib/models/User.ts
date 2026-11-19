@@ -1,4 +1,3 @@
-
 // lib/models/User.ts
 import mongoose, { Schema, Document, Model } from 'mongoose';
 import { encrypt, decrypt } from '../encryption';
@@ -9,6 +8,8 @@ export interface IUser extends Document {
   passwordHash?: string;
   deviceIds: string[]; 
   displayName: string;
+  country?: string; // 👈 ADDED
+  phone?: string;   // 👈 ADDED
   role: 'user' | 'admin';
   status: 'active' | 'suspended' | 'closed';
   kycTier: 0 | 1 | 2 | 3;
@@ -26,11 +27,11 @@ export interface IUser extends Document {
   lastSeenAt: Date;
   createdAt: Date;
   updatedAt: Date;
-  // 👇 PASSWORD RESET FIELDS
   resetPasswordToken?: string;
   resetPasswordExpires?: Date;
-  failedOtpAttempts: number; // 👈 Track wrong OTP guesses
-  isResetBlocked: boolean;   // 👈 Permanent block flag
+  failedOtpAttempts: number; 
+  isResetBlocked: boolean;   
+  lockedUntil?: Date; 
 }
 
 const UserSchema = new Schema<IUser>(
@@ -40,6 +41,8 @@ const UserSchema = new Schema<IUser>(
     passwordHash: { type: String },
     deviceIds: { type: [String], default: [], index: true },
     displayName: { type: String, required: true },
+    country: { type: String }, // 👈 ADDED
+    phone: { type: String },   // 👈 ADDED
     role: { type: String, enum: ['user', 'admin'], default: 'user', index: true },
     status: { type: String, enum: ['active', 'suspended', 'closed'], default: 'active', index: true },
     kycTier: { type: Number, enum: [0, 1, 2, 3], default: 0 },
@@ -58,11 +61,11 @@ const UserSchema = new Schema<IUser>(
     claimedBadges: { type: [String], default: [] },
     favorites: { type: [String], default: [] },
     lastSeenAt: { type: Date, default: Date.now },
-    // 👇 PASSWORD RESET FIELDS
     resetPasswordToken: { type: String },
     resetPasswordExpires: { type: Date },
     failedOtpAttempts: { type: Number, default: 0 }, 
     isResetBlocked: { type: Boolean, default: false }, 
+    lockedUntil: { type: Date }, 
   },
   { timestamps: true }
 );
@@ -95,6 +98,15 @@ UserSchema.set('toJSON', {
 const User: Model<IUser> = mongoose.models.User || mongoose.model<IUser>('User', UserSchema);
 export default User;
 
+
+
+
+
+
+
+
+
+
 // // lib/models/User.ts
 // import mongoose, { Schema, Document, Model } from 'mongoose';
 // import { encrypt, decrypt } from '../encryption';
@@ -103,6 +115,7 @@ export default User;
 //   firebaseUid: string;
 //   email: string;
 //   passwordHash?: string;
+//   deviceIds: string[]; 
 //   displayName: string;
 //   role: 'user' | 'admin';
 //   status: 'active' | 'suspended' | 'closed';
@@ -121,6 +134,11 @@ export default User;
 //   lastSeenAt: Date;
 //   createdAt: Date;
 //   updatedAt: Date;
+//   resetPasswordToken?: string;
+//   resetPasswordExpires?: Date;
+//   failedOtpAttempts: number; 
+//   isResetBlocked: boolean;   
+//   lockedUntil?: Date; // 👈 FIXED: Added here
 // }
 
 // const UserSchema = new Schema<IUser>(
@@ -128,6 +146,7 @@ export default User;
 //     firebaseUid: { type: String, required: true, unique: true, index: true },
 //     email: { type: String, required: true, unique: true, index: true },
 //     passwordHash: { type: String },
+//     deviceIds: { type: [String], default: [], index: true },
 //     displayName: { type: String, required: true },
 //     role: { type: String, enum: ['user', 'admin'], default: 'user', index: true },
 //     status: { type: String, enum: ['active', 'suspended', 'closed'], default: 'active', index: true },
@@ -147,11 +166,15 @@ export default User;
 //     claimedBadges: { type: [String], default: [] },
 //     favorites: { type: [String], default: [] },
 //     lastSeenAt: { type: Date, default: Date.now },
+//     resetPasswordToken: { type: String },
+//     resetPasswordExpires: { type: Date },
+//     failedOtpAttempts: { type: Number, default: 0 }, 
+//     isResetBlocked: { type: Boolean, default: false }, 
+//     lockedUntil: { type: Date }, // 👈 FIXED: Added here
 //   },
 //   { timestamps: true }
 // );
 
-// // 👇 ENCRYPTION HOOKS (Using async to avoid 'next' type error)
 // UserSchema.pre('save', async function () {
 //   if (this.isModified('displayName')) {
 //     this.displayName = encrypt(this.displayName);
@@ -168,9 +191,15 @@ export default User;
 //   transform: (doc, ret: any) => {
 //     delete ret.__v;
 //     delete ret.passwordHash;
+//     delete ret.deviceIds;
+//     delete ret.resetPasswordToken;
+//     delete ret.resetPasswordExpires;
+//     delete ret.failedOtpAttempts;
+//     delete ret.isResetBlocked;
 //     return ret;
 //   }
 // });
 
 // const User: Model<IUser> = mongoose.models.User || mongoose.model<IUser>('User', UserSchema);
 // export default User;
+

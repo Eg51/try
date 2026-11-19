@@ -14,7 +14,7 @@ export default function KycActionButtons({ submissionId }: { submissionId: strin
     let reason = "";
     if (action === "reject") {
       const input = prompt("Please enter the reason for rejection:");
-      if (input === null) return; // User cancelled
+      if (input === null) return;
       reason = input;
     }
 
@@ -34,7 +34,7 @@ export default function KycActionButtons({ submissionId }: { submissionId: strin
       <button
         onClick={() => handleAction("reject")}
         disabled={isLoading !== null}
-        className="p-2 rounded-lg bg-surface-900 border border-surface-700 text-text-muted hover:text-danger hover:border-danger transition-colors"
+        className="p-2 rounded-xl bg-white/50 dark:bg-[#121A14] border border-red-500/20 text-red-500 hover:bg-red-500/10 transition-colors shadow-sm"
         title="Reject"
       >
         {isLoading === "reject" ? <Loader2 size={16} className="animate-spin" /> : <X size={16} />}
@@ -42,7 +42,7 @@ export default function KycActionButtons({ submissionId }: { submissionId: strin
       <button
         onClick={() => handleAction("approve")}
         disabled={isLoading !== null}
-        className="p-2 rounded-lg bg-surface-900 border border-surface-700 text-text-muted hover:text-success hover:border-success transition-colors"
+        className="p-2 rounded-xl bg-white/50 dark:bg-[#121A14] border border-lime-500/20 text-lime-600 dark:text-lime-400 hover:bg-lime-500/10 transition-colors shadow-sm"
         title="Approve"
       >
         {isLoading === "approve" ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
@@ -50,3 +50,57 @@ export default function KycActionButtons({ submissionId }: { submissionId: strin
     </div>
   );
 }
+
+
+// // app/admin/kyc/KycActionButtons.tsx
+// "use client";
+
+// import { useState } from "react";
+// import { useRouter } from "next/navigation";
+// import { reviewKycSubmission } from "@/app/actions/admin-kyc";
+// import { Check, X, Loader2 } from "lucide-react";
+
+// export default function KycActionButtons({ submissionId }: { submissionId: string }) {
+//   const [isLoading, setIsLoading] = useState<"approve" | "reject" | null>(null);
+//   const router = useRouter();
+
+//   const handleAction = async (action: "approve" | "reject") => {
+//     let reason = "";
+//     if (action === "reject") {
+//       const input = prompt("Please enter the reason for rejection:");
+//       if (input === null) return; // User cancelled
+//       reason = input;
+//     }
+
+//     setIsLoading(action);
+//     const res = await reviewKycSubmission(submissionId, action, reason);
+//     setIsLoading(null);
+
+//     if (res.success) {
+//       router.refresh();
+//     } else {
+//       alert(res.error);
+//     }
+//   };
+
+//   return (
+//     <div className="flex items-center justify-end gap-2">
+//       <button
+//         onClick={() => handleAction("reject")}
+//         disabled={isLoading !== null}
+//         className="p-2 rounded-lg bg-surface-900 border border-surface-700 text-text-muted hover:text-danger hover:border-danger transition-colors"
+//         title="Reject"
+//       >
+//         {isLoading === "reject" ? <Loader2 size={16} className="animate-spin" /> : <X size={16} />}
+//       </button>
+//       <button
+//         onClick={() => handleAction("approve")}
+//         disabled={isLoading !== null}
+//         className="p-2 rounded-lg bg-surface-900 border border-surface-700 text-text-muted hover:text-success hover:border-success transition-colors"
+//         title="Approve"
+//       >
+//         {isLoading === "approve" ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+//       </button>
+//     </div>
+//   );
+// }

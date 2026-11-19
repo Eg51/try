@@ -25,6 +25,13 @@ export async function proxy(request: NextRequest) {
       return response;
     }
 
+    // 👇 MOLE 1 FIXED: Check if the Admin has locked this account
+    if (user.lockedUntil && user.lockedUntil.getTime() > Date.now()) {
+      const response = NextResponse.redirect(new URL('/login?locked=true', request.url));
+      response.cookies.delete('session');
+      return response;
+    }
+
     // 🛡️ ADMIN SESSION TIMEOUT (12 Hours)
     if (user.role === 'admin') {
       const sessionAge = Date.now() - (decodedClaims.auth_time * 1000);
@@ -86,7 +93,6 @@ export const config = {
 
 
 
-
 // // proxy.ts
 // import { NextResponse } from 'next/server';
 // import type { NextRequest } from 'next/server';
@@ -103,7 +109,6 @@ export const config = {
 //   }
 
 //   try {
-//     // Verify the session cookie cryptographically
 //     const decodedClaims = await adminAuth.verifySessionCookie(sessionCookie, true);
 
 //     await connectDB();
@@ -132,7 +137,16 @@ export const config = {
 //       return NextResponse.redirect(new URL('/dashboard', request.url));
 //     }
 
-//     // Pass user context to API routes and server components
+//     // 🛡️ REDIRECT ADMINS AWAY FROM USER DASHBOARD
+//     if (pathname === '/dashboard' && user.role === 'admin') {
+//       return NextResponse.redirect(new URL('/admin', request.url));
+//     }
+
+//     // 🛡️ KYC GUARD
+//     if (user.role !== 'admin' && user.kycTier === 0 && !pathname.startsWith('/dashboard/kyc')) {
+//       return NextResponse.redirect(new URL('/dashboard/kyc', request.url));
+//     }
+
 //     const requestHeaders = new Headers(request.headers);
 //     requestHeaders.set('x-user-id', user._id.toString());
 //     requestHeaders.set('x-user-uid', decodedClaims.uid);
@@ -146,7 +160,6 @@ export const config = {
 //     });
     
 //   } catch (error) {
-//     // Any invalid/expired cookie results in clearing and redirecting
 //     const response = NextResponse.redirect(new URL('/login', request.url));
 //     response.cookies.delete('session');
 //     return response;
