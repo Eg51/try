@@ -604,8 +604,7 @@ export async function resetPasswordWithOTP(rawData: unknown) {
 //     // Pass country and phone to bootstrapUser
 //     const user = await bootstrapUser(parsed.data.email, parsed.data.name, firebaseUid, deviceId, passwordHash, parsed.data.country, parsed.data.phone);
 
-//     const customToken = await adminAuth.createCustomToken(user.firebaseUid);
-//     return { success: true, customToken, role: user.role };
+//     const customToksttrue, customToken, role: user.role };
 //   } catch (error: any) {
 //     console.error("❌ REGISTER ERROR:", error);
 //     return { error: "Registration failed." };
